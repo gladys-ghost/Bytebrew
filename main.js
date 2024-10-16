@@ -105,15 +105,91 @@ loader.load(
 // === Clock for Animation Mixer ===
 const clock = new THREE.Clock();
 
+// === Menu Handling ===
+const startMenu = document.getElementById('startMenu');
+const optionsScreen = document.getElementById('optionsScreen');
+const creditsScreen = document.getElementById('creditsScreen');
+
+const startButton = document.getElementById('startButton');
+const optionsButton = document.getElementById('optionsButton');
+const creditsButton = document.getElementById('creditsButton');
+const saveOptionsButton = document.getElementById('saveOptionsButton');
+const closeCreditsButton = document.getElementById('closeCreditsButton');
+
+let gameStarted = false;
+
+// Start the game
+startButton.addEventListener('click', () => {
+  startMenu.style.display = 'none';
+  gameStarted = true;
+});
+
+// Show options screen
+optionsButton.addEventListener('click', () => {
+  startMenu.style.display = 'none';
+  optionsScreen.style.display = 'flex';
+});
+
+// Show credits screen
+creditsButton.addEventListener('click', () => {
+  startMenu.style.display = 'none';
+  creditsScreen.style.display = 'flex';
+});
+
+// Save options and return to main menu
+saveOptionsButton.addEventListener('click', () => {
+  // Here you would typically save the options to local storage or a config file
+  console.log('Options saved');
+  optionsScreen.style.display = 'none';
+  startMenu.style.display = 'flex';
+});
+
+// Close credits and return to main menu
+closeCreditsButton.addEventListener('click', () => {
+  creditsScreen.style.display = 'none';
+  startMenu.style.display = 'flex';
+});
+
+// Function to apply options (placeholder)
+function applyOptions() {
+  const difficulty = document.getElementById('difficulty').value;
+  const mouseSensitivity = document.getElementById('mouseSensitivity').value;
+  const soundVolume = document.getElementById('soundVolume').value;
+  const graphicsQuality = document.getElementById('graphicsQuality').value;
+  const fov = document.getElementById('fov').value;
+
+  console.log('Applying options:', {
+    difficulty,
+    mouseSensitivity,
+    soundVolume,
+    graphicsQuality,
+    fov
+  });
+
+  // Here you would typically update game settings based on these values
+  // For example:
+  // camera.fov = fov;
+  // camera.updateProjectionMatrix();
+  // updateGraphicsQuality(graphicsQuality);
+  // etc.
+}
+
+// Call applyOptions when saving options
+saveOptionsButton.addEventListener('click', applyOptions);
+
 // === Movement Controls ===
 const keysPressed = {};
 
 window.addEventListener('keydown', (event) => {
-  keysPressed[event.key.toLowerCase()] = true;
+  if (gameStarted) {
+    keysPressed[event.key.toLowerCase()] = true;
+  }
 });
 
 window.addEventListener('keyup', (event) => {
-  keysPressed[event.key.toLowerCase()] = false;
+  if (gameStarted) {
+    keysPressed[event.key.toLowerCase()] = false;
+  }
 });
 
 // === Animation Loop ===
@@ -126,59 +202,59 @@ function animate() {
     mixer.update(delta);
   }
 
-  const walkSpeed = 3;
-  const rotateSpeed = Math.PI;
+  if (gameStarted) {
+    const walkSpeed = 3;
+    const rotateSpeed = Math.PI;
 
-  let isMoving = false;
+    let isMoving = false;
 
-  if (model) {
-    // Movement handling
-    if (keysPressed['w'] || keysPressed['arrowup']) {
-      model.position.z += walkSpeed * delta * Math.cos(model.rotation.y);
-      model.position.x += walkSpeed * delta * Math.sin(model.rotation.y);
-      isMoving = true;
+    if (model) {
+      // Movement handling
+      if (keysPressed['w'] || keysPressed['arrowup']) {
+        model.position.z += walkSpeed * delta * Math.cos(model.rotation.y);
+        model.position.x += walkSpeed * delta * Math.sin(model.rotation.y);
+        isMoving = true;
+      }
+
+      if (keysPressed['s'] || keysPressed['arrowdown']) {
+        model.position.z -= walkSpeed * delta * Math.cos(model.rotation.y);
+        model.position.x -= walkSpeed * delta * Math.sin(model.rotation.y);
+        isMoving = true;
+      }
+
+      if (keysPressed['a'] || keysPressed['arrowleft']) {
+        model.rotation.y += rotateSpeed * delta;
+      }
+
+      if (keysPressed['d'] || keysPressed['arrowright']) {
+        model.rotation.y -= rotateSpeed * delta;
+      }
+
+      // Adjust the camera position and rotation to follow the player
+      const cameraPosition = new THREE.Vector3().copy(cameraOffset).applyMatrix4(model.matrixWorld);
+      camera.position.copy(cameraPosition);
+
+      const lookDirection = new THREE.Vector3(
+        Math.sin(model.rotation.y),
+        0,
+        Math.cos(model.rotation.y)
+      );
+      const cameraLookAt = new THREE.Vector3().copy(model.position).add(lookDirection);
+
+      camera.lookAt(cameraLookAt.x, cameraPosition.y, cameraLookAt.z);
     }
 
-    if (keysPressed['s'] || keysPressed['arrowdown']) {
-      model.position.z -= walkSpeed * delta * Math.cos(model.rotation.y);
-      model.position.x -= walkSpeed * delta * Math.sin(model.rotation.y);
-      isMoving = true;
-    }
-
-    if (keysPressed['a'] || keysPressed['arrowleft']) {
-      model.rotation.y += rotateSpeed * delta;
-    }
-
-    if (keysPressed['d'] || keysPressed['arrowright']) {
-      model.rotation.y -= rotateSpeed * delta;
-    }
-
-    // Adjust the camera position and rotation to follow the player
-    const cameraPosition = new THREE.Vector3().copy(cameraOffset).applyMatrix4(model.matrixWorld);
-    camera.position.copy(cameraPosition);
-
-    // Ensure the camera always looks in the direction the player is facing
-// Camera should look in the same direction the player is facing
-const lookDirection = new THREE.Vector3(
-    Math.sin(model.rotation.y), // Forward direction in X
-    0,                          // Keep the camera level
-    Math.cos(model.rotation.y)   // Forward direction in Z
-  );
-  const cameraLookAt = new THREE.Vector3().copy(model.position).add(lookDirection);
-
-  // Make the camera look in the calculated forward direction
-  camera.lookAt(cameraLookAt.x, cameraPosition.y, cameraLookAt.z);
-  }
-
-  if (walkAction) {
-    if (isMoving) {
-      if (walkAction.paused) walkAction.paused = false;
-    } else {
-      if (!walkAction.paused) walkAction.paused = true;
+    if (walkAction) {
+      if (isMoving) {
+        if (walkAction.paused) walkAction.paused = false;
+      } else {
+        if (!walkAction.paused) walkAction.paused = true;
+      }
     }
   }
 
   renderer.render(scene, camera);
 }
 
+// Start the animation loop immediately
 animate();
