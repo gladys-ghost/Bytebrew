@@ -65,11 +65,15 @@ const clock = new THREE.Clock();
 const keysPressed = {};
 
 window.addEventListener('keydown', (event) => {
-  keysPressed[event.key.toLowerCase()] = true;
+  if (gameStarted) {
+    keysPressed[event.key.toLowerCase()] = true;
+  }
 });
 
 window.addEventListener('keyup', (event) => {
-  keysPressed[event.key.toLowerCase()] = false;
+  if (gameStarted) {
+    keysPressed[event.key.toLowerCase()] = false;
+  }
 });
 
 // === Mouse Controls ===
@@ -245,6 +249,80 @@ function loadGun() {
     }
   );
 }
+
+
+// === Menu Handling ===
+const startMenu = document.getElementById('startMenu');
+const optionsScreen = document.getElementById('optionsScreen');
+const creditsScreen = document.getElementById('creditsScreen');
+
+const startButton = document.getElementById('startButton');
+const optionsButton = document.getElementById('optionsButton');
+const creditsButton = document.getElementById('creditsButton');
+const saveOptionsButton = document.getElementById('saveOptionsButton');
+const closeCreditsButton = document.getElementById('closeCreditsButton');
+
+let gameStarted = false;
+
+// Start the game
+startButton.addEventListener('click', () => {
+  startMenu.style.display = 'none';
+  gameStarted = true;
+});
+
+// Show options screen
+optionsButton.addEventListener('click', () => {
+  startMenu.style.display = 'none';
+  optionsScreen.style.display = 'flex';
+});
+
+// Show credits screen
+creditsButton.addEventListener('click', () => {
+  startMenu.style.display = 'none';
+  creditsScreen.style.display = 'flex';
+});
+
+// Save options and return to main menu
+saveOptionsButton.addEventListener('click', () => {
+  // Here you would typically save the options to local storage or a config file
+  console.log('Options saved');
+  optionsScreen.style.display = 'none';
+  startMenu.style.display = 'flex';
+});
+
+// Close credits and return to main menu
+closeCreditsButton.addEventListener('click', () => {
+  creditsScreen.style.display = 'none';
+  startMenu.style.display = 'flex';
+});
+
+// Function to apply options (placeholder)
+function applyOptions() {
+  const difficulty = document.getElementById('difficulty').value;
+  const mouseSensitivity = document.getElementById('mouseSensitivity').value;
+  const soundVolume = document.getElementById('soundVolume').value;
+  const graphicsQuality = document.getElementById('graphicsQuality').value;
+  const fov = document.getElementById('fov').value;
+
+  console.log('Applying options:', {
+    difficulty,
+    mouseSensitivity,
+    soundVolume,
+    graphicsQuality,
+    fov
+  });
+
+  // Here you would typically update game settings based on these values
+  // For example:
+  // camera.fov = fov;
+  // camera.updateProjectionMatrix();
+  // updateGraphicsQuality(graphicsQuality);
+  // etc.
+}
+
+// Call applyOptions when saving options
+saveOptionsButton.addEventListener('click', applyOptions);
+
 
 // === Animation Loop ===
 function animate() {
