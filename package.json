@@ -1,0 +1,25 @@
+{
+  "name": "bytebrew",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gladys-ghost/Bytebrew.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gladys-ghost/Bytebrew/issues"
+  },
+  "homepage": "https://github.com/gladys-ghost/Bytebrew#readme",
+  "devDependencies": {
+    "vite": "^5.4.9"
+  },
+  "dependencies": {
+    "three": "^0.169.0"
+  }
+}
