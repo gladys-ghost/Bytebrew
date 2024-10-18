@@ -14,7 +14,7 @@ const camera = new THREE.PerspectiveCamera(
   1000 // Far clipping plane
 );
 // Move the camera behind and above the player for third-person debugging
-const cameraOffset = new THREE.Vector3(100, 100, 100); // Set behind the player for debugging
+const cameraOffset = new THREE.Vector3(0, 6, 1.5); // Set behind the player for debugging
 
 // === Renderer Setup ===
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -90,7 +90,7 @@ loader.load(
     model = gltf.scene;
     model.scale.set(0.3, 0.3, 0.3);
     model.rotation.y = Math.PI; // Rotate 180 degrees to face forward
-    model.position.set(0, 0, 0);
+    model.position.set(-23, 0, -20);
 
     model.traverse((child) => {
       if (child.isMesh) {
@@ -174,6 +174,8 @@ function animate() {
   requestAnimationFrame(animate);
 
   const delta = clock.getDelta();
+
+  // console.log(model.position);
 
   if (mixer) {
     mixer.update(delta);
