@@ -1,14 +1,18 @@
 import * as THREE from "three";
 
 export default class Wall {
-  constructor(x, y, z, rotation = 0) {
+  constructor(x, y, z, rotation = 0, size = 20) {
+    this.wallHeight = 5;
+    this.wallWidth = 0.2;
+    this.wallDepth = size;
+
     this.loader = new THREE.TextureLoader();
 
     // Load all textures
     this.texture = this.loader.load("/wall-textures/concrete_wall_003_diff_1k.jpg", (texture) => {
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(5, 5);  // Adjust repeat values as needed
+      texture.repeat.set(3, 1);  // Adjust repeat values as needed
     });
 
     this.roughnessTexture = this.loader.load("/wall-textures/concrete_wall_003_rough_1k.jpg", (texture) => {
@@ -20,11 +24,11 @@ export default class Wall {
     this.normalTexture = this.loader.load("/wall-textures/concrete_wall_003_nor_gl_1k.exr", (texture) => {
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(1, 1);  // Repeat to cover the wall
+      texture.repeat.set(5, 5);  // Repeat to cover the wall
     });
 
     // Create the geometry
-    this.geometry = new THREE.BoxGeometry(0.1, 20, 20);
+    this.geometry = new THREE.BoxGeometry(this.wallWidth, this.wallHeight, this.wallDepth);
 
     // Create the material and assign all the textures
     this.material = new THREE.MeshStandardMaterial({
@@ -37,7 +41,7 @@ export default class Wall {
     // Create the mesh and position it
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.rotation.y = rotation;
-    this.mesh.position.set(x, y, z);
+    this.mesh.position.set(x , y + this.wallHeight / 2, z);
   }
 }
 

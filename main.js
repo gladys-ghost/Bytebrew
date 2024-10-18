@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import Level_1 from "./World/Level_1";
+import Level1 from "./World/Level1";
 
 // === Scene Setup ===
 const scene = new THREE.Scene();
@@ -14,7 +14,7 @@ const camera = new THREE.PerspectiveCamera(
   1000 // Far clipping plane
 );
 // Move the camera behind and above the player for third-person debugging
-const cameraOffset = new THREE.Vector3(0, 6, 1.5); // Set behind the player for debugging
+const cameraOffset = new THREE.Vector3(100, 100, 100); // Set behind the player for debugging
 
 // === Renderer Setup ===
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -158,7 +158,7 @@ const building = new THREE.Mesh(
 building.position.set(20000, 0, 10);
 scene.add(building);
 
-const level = new Level_1(scene);
+const level = new Level1(scene);
 
 // Create bounding box for the building
 buildingBoundingBox = new THREE.Box3().setFromObject(building);
