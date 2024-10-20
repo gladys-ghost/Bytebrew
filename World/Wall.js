@@ -37,11 +37,17 @@ export default class Wall {
       normalMap: this.normalTexture,  // Normal texture for 
       roughness: 0.5,
     });
-
+    
+    
     // Create the mesh and position it
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.rotation.y = rotation;
+    this.boundingBox = new THREE.Box3().setFromObject(this.mesh);
+    this.mesh.receiveShadow = true;
     this.mesh.position.set(x , y + this.wallHeight / 2, z);
+  }
+  updateBoundingBox() {
+    this.boundingBox.setFromObject(this.mesh);
   }
 }
 

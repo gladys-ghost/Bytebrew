@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import Level1 from "./World/Level1";
+import Level1 from "./World/Level1"; // Assuming Level1 class handles wall creation
 
 // === Scene Setup ===
 const scene = new THREE.Scene();
@@ -13,8 +13,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1, // Near clipping plane
   1000 // Far clipping plane
 );
-// Move the camera behind and above the player for third-person debugging
-const cameraOffset = new THREE.Vector3(0, 6, 1.5); // Set behind the player for debugging
+const cameraOffset = new THREE.Vector3(0, 6, 1.5); // Offset for third-person view
 
 // === Renderer Setup ===
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -27,7 +26,6 @@ document.body.appendChild(renderer.domElement);
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
@@ -40,21 +38,15 @@ directionalLight.position.set(5, 10, 7.5);
 directionalLight.castShadow = true;
 directionalLight.shadow.mapSize.width = 1024;
 directionalLight.shadow.mapSize.height = 1024;
-directionalLight.shadow.camera.near = 0.5;
-directionalLight.shadow.camera.far = 50;
-
 scene.add(directionalLight);
 
 // === Ground Plane ===
 const groundGeometry = new THREE.PlaneGeometry(50, 50);
 const loaderGround = new THREE.TextureLoader();
 
-// Load all textures
 const baseColorTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_basecolor.png');
 const normalTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_normal.png');
 const roughnessTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_roughness.png');
-
-baseColorTexture.colorSpace = THREE.SRGBColorSpace;
 
 [baseColorTexture, normalTexture, roughnessTexture].forEach((texture) => {
   texture.wrapS = THREE.RepeatWrapping;
@@ -62,14 +54,12 @@ baseColorTexture.colorSpace = THREE.SRGBColorSpace;
   texture.repeat.set(20, 20);
 });
 
-// Create the ground material with multiple textures
 const groundMaterial = new THREE.MeshStandardMaterial({
-  map: baseColorTexture,      // Base color (diffuse) texture
-  normalMap: normalTexture,    // Normal map for surface detail
-  roughnessMap: roughnessTexture, // Roughness map for surface reflectivity
+  map: baseColorTexture,
+  normalMap: normalTexture,
+  roughnessMap: roughnessTexture,
 });
 
-// Create the ground mesh and apply the material
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
@@ -77,20 +67,16 @@ scene.add(ground);
 
 // === GLTF Loader ===
 const loader = new GLTFLoader();
-
-let mixer;
-let model;
-let walkAction;
+let mixer, model, walkAction;
 let modelBoundingBox;
-let buildingBoundingBox;
 
 loader.load(
   "./public/obn_2.glb",
-  function (gltf) {
+  (gltf) => {
     model = gltf.scene;
     model.scale.set(0.3, 0.3, 0.3);
-    model.rotation.y = Math.PI; // Rotate 180 degrees to face forward
-    model.position.set(-23, 0, -20);
+    model.position.set(-2, 0, 0);
+    model.rotation.y = Math.PI; // Rotate 180 degrees
 
     model.traverse((child) => {
       if (child.isMesh) {
@@ -101,39 +87,23 @@ loader.load(
 
     scene.add(model);
 
-    // Create bounding box for the model
-    modelBoundingBox = new THREE.Box3().setFromObject(model);
+    // Bounding box for collision detection
+    
+    
+    console.log(modelBoundingBox);
 
     mixer = new THREE.AnimationMixer(model);
-    console.log(
-      "Available Animations:",
-      gltf.animations.map((clip) => clip.name)
-    );
 
     if (gltf.animations && gltf.animations.length) {
-      const walkClip = THREE.AnimationClip.findByName(
-        gltf.animations,
-        "npc_walk_pistol"
-      );
-      if (walkClip) {
-        walkAction = mixer.clipAction(walkClip);
-        walkAction.play();
-        walkAction.setLoop(THREE.LoopRepeat, Infinity);
-        walkAction.paused = true;
-      } else {
-        walkAction = mixer.clipAction(gltf.animations[0]);
-        walkAction.play();
-        walkAction.setLoop(THREE.LoopRepeat, Infinity);
-        walkAction.paused = true;
-      }
+      const walkClip = THREE.AnimationClip.findByName(gltf.animations, "npc_walk_pistol") || gltf.animations[0];
+      walkAction = mixer.clipAction(walkClip);
+      walkAction.setLoop(THREE.LoopRepeat, Infinity);
+      walkAction.play();
+      walkAction.paused = true;
     }
   },
-  function (xhr) {
-    console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`);
-  },
-  function (error) {
-    console.error("An error occurred while loading the GLB model:", error);
-  }
+  (xhr) => console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`),
+  (error) => console.error("An error occurred while loading the GLB model:", error)
 );
 
 // === Clock for Animation Mixer ===
@@ -150,65 +120,92 @@ window.addEventListener("keyup", (event) => {
   keysPressed[event.key.toLowerCase()] = false;
 });
 
-// === Add Building ===
-const building = new THREE.Mesh(
-  new THREE.BoxGeometry(1, 20, 20),
-  new THREE.MeshStandardMaterial({ color: 0xfffffff })
-);
-building.position.set(20000, 0, 10);
-scene.add(building);
+// === Setup Level ===
+const level = new Level1(scene); // This will add walls and other level details
+const wallBoundingBoxes = level.getWallBoundingBoxes(); // Get wall bounding boxes from Level1
 
-const level = new Level1(scene);
+// === Sliding Collision Detection ===
+function checkAndResolveCollision(deltaX, deltaZ) {
+  const originalPosition = new THREE.Vector3().copy(model.position);
+  modelBoundingBox = new THREE.Box3().setFromObject(model);
 
-// Create bounding box for the building
-buildingBoundingBox = new THREE.Box3().setFromObject(building);
+  let collidedX = false;
+  let collidedZ = false;
 
-// === Collision Detection ===
-function checkCollision() {
-  modelBoundingBox.setFromObject(model); // Update model's bounding box
-  return modelBoundingBox.intersectsBox(buildingBoundingBox); // Check for intersection
+  // Attempt to move along the X-axis
+  model.position.x += deltaX;
+  modelBoundingBox.setFromObject(model);
+  
+  for (const wallBoundingBox of wallBoundingBoxes) {
+    if (modelBoundingBox.intersectsBox(wallBoundingBox)) {
+      collidedX = true;
+      model.position.x = originalPosition.x; // Revert X movement on collision
+      break;
+    }
+  }
+
+  // Attempt to move along the Z-axis
+  model.position.z += deltaZ;
+  modelBoundingBox.setFromObject(model);
+
+  for (const wallBoundingBox of wallBoundingBoxes) {
+    if (modelBoundingBox.intersectsBox(wallBoundingBox)) {
+      collidedZ = true;
+      model.position.z = originalPosition.z; // Revert Z movement on collision
+      break;
+    }
+  }
+
+  // If collision happens on X, allow sliding along Z
+  if (collidedX && !collidedZ) {
+    model.position.z = originalPosition.z + deltaZ;
+  }
+  // If collision happens on Z, allow sliding along X
+  if (collidedZ && !collidedX) {
+    model.position.x = originalPosition.x + deltaX;
+  }
+
+  return { collidedX, collidedZ };
 }
 
 // === Animation Loop ===
 function animate() {
   requestAnimationFrame(animate);
-
   const delta = clock.getDelta();
 
-  // console.log(model.position);
+  if (mixer) mixer.update(delta);
 
-  if (mixer) {
-    mixer.update(delta);
-  }
-
-  const walkSpeed = 3;
-  const rotateSpeed = Math.PI;
+  const walkSpeed = 5 * delta;
+  const rotateSpeed = Math.PI * delta;
 
   let isMoving = false;
 
   if (model) {
-    // Movement handling
-    if ((keysPressed["w"] || keysPressed["arrowup"]) && !checkCollision()) {
-      model.position.z += walkSpeed * delta * Math.cos(model.rotation.y);
-      model.position.x += walkSpeed * delta * Math.sin(model.rotation.y);
+    let deltaX = 0;
+    let deltaZ = 0;
+
+    if (keysPressed["w"] || keysPressed["arrowup"]) {
+      deltaZ = walkSpeed * Math.cos(model.rotation.y);
+      deltaX = walkSpeed * Math.sin(model.rotation.y);
+      isMoving = true;
+    }
+    if (keysPressed["s"] || keysPressed["arrowdown"]) {
+      deltaZ = -walkSpeed * Math.cos(model.rotation.y);
+      deltaX = -walkSpeed * Math.sin(model.rotation.y);
       isMoving = true;
     }
 
-    if ((keysPressed["s"] || keysPressed["arrowdown"]) && !checkCollision()) {
-      model.position.z -= walkSpeed * delta * Math.cos(model.rotation.y);
-      model.position.x -= walkSpeed * delta * Math.sin(model.rotation.y);
-      isMoving = true;
-    }
+    // Resolve collisions
+    const { collidedX, collidedZ } = checkAndResolveCollision(deltaX, deltaZ);
 
     if (keysPressed["a"] || keysPressed["arrowleft"]) {
-      model.rotation.y += rotateSpeed * delta;
+      model.rotation.y += rotateSpeed;
     }
-
     if (keysPressed["d"] || keysPressed["arrowright"]) {
-      model.rotation.y -= rotateSpeed * delta;
+      model.rotation.y -= rotateSpeed;
     }
 
-    // Adjust the camera position and rotation to follow the player
+    // Adjust the camera position to follow the player
     const cameraPosition = new THREE.Vector3()
       .copy(cameraOffset)
       .applyMatrix4(model.matrixWorld);
@@ -228,11 +225,7 @@ function animate() {
   }
 
   if (walkAction) {
-    if (isMoving) {
-      if (walkAction.paused) walkAction.paused = false;
-    } else {
-      if (!walkAction.paused) walkAction.paused = true;
-    }
+    walkAction.paused = !isMoving; // Play or pause animation based on movement
   }
 
   renderer.render(scene, camera);
