@@ -231,4 +231,5 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+import {animate} from './playerModel';
 animate();
