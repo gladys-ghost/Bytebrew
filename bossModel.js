@@ -8,8 +8,28 @@ class BossModel {
     this.mixer = null;
     this.animations = {};
     this.hasReachedTarget = false;
+    this.isAttacking = false;
+    this.isWalking = false;
+    this.audioLoader = new THREE.AudioLoader();
+    this.footstepSound = new THREE.Audio(new THREE.AudioListener());
+    this.roarSound = new THREE.Audio(new THREE.AudioListener());
 
+    // Load sounds
+    this.loadSounds();
     this.loadModel();
+  }
+
+  loadSounds() {
+    this.audioLoader.load("/models/sounds/monster_footsteps.mp3", (buffer) => {
+      this.footstepSound.setBuffer(buffer);
+      this.footstepSound.setLoop(true);
+      this.footstepSound.setVolume(0.5); // Adjust volume as needed
+    });
+
+    this.audioLoader.load("/models/sounds/roar.mp3", (buffer) => {
+      this.roarSound.setBuffer(buffer);
+      this.roarSound.setVolume(1); // Adjust volume as needed
+    });
   }
 
   loadModel() {
@@ -105,6 +125,10 @@ class BossModel {
         const walkAction = this.mixer.clipAction(this.animations["Walk"]);
         if (!walkAction.isRunning()) {
           this.playAnimation("Walk");
+          if (!this.isWalking) {
+            this.footstepSound.play(); // Start playing footstep sound
+            this.isWalking = true; // Set walking state to true
+          }
         }
       }
     } else if (!this.isAttacking) {
@@ -112,8 +136,12 @@ class BossModel {
       this.hasReachedTarget = true;
       this.isAttacking = true; // Set attacking state to true
 
+      // Stop the footstep sound
+      this.footstepSound.stop();
+      this.isWalking = false; // Reset walking state
+
       // Randomly choose between the available attack animations
-      const attackAnimations = ["HookPunch", "Stab", "Attack"]; // Add other attack animations here
+      const attackAnimations = ["HookPunch", "Stab", "Attack"];
       const randomAttack =
         attackAnimations[Math.floor(Math.random() * attackAnimations.length)];
 
@@ -128,11 +156,18 @@ class BossModel {
 
         console.log(`Playing random attack animation: ${randomAttack}`);
 
+        // Play the roar sound
+        this.roarSound.play();
+
         // Add an event listener to reset the `isAttacking` flag after the attack finishes
         attackAction.getMixer().addEventListener("finished", () => {
           this.isAttacking = false; // Reset attacking state
+          this.footstepSound.stop(); // Stop footstep sound after attacking
         });
       }
+    } else if (this.isWalking && this.isAttacking) {
+      this.footstepSound.stop(); // Stop footstep sound if attacking
+      this.isWalking = false; // Reset walking state
     }
   }
 }
