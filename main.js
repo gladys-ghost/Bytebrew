@@ -43,13 +43,20 @@ directionalLight.position.set(0, 20, 0);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
 
-// Flicker effect for ghost light
-function flickerLight(light) {
-  light.intensity = Math.random() * 0.5 + 0.7;
+// === Ceiling Setup ===
+function createCeiling(width, height, depth, texture) {
+  const ceilingGeometry = new THREE.PlaneGeometry(width, depth);
+  const ceilingMaterial = new THREE.MeshStandardMaterial({
+    map: texture,
+    side: THREE.DoubleSide,
+  });
+
+  const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.y = height; // Set ceiling at the same height as the walls
+  ceiling.receiveShadow = true;
+  scene.add(ceiling);
 }
-setInterval(() => {
-  flickerLight(ghostLight);
-}, 200); // Flicker every 200ms
 
 // === Ground Plane ===
 const groundGeometry = new THREE.PlaneGeometry(50, 50);
@@ -111,77 +118,79 @@ loader.load(
   (error) => console.error("An error occurred while loading the GLB model:", error)
 );
 
-// === Function to Create Furniture ===
-function createFurniture() {
-  const furniture = [];
-  const buildingBounds = new THREE.Box3(new THREE.Vector3(-25, 0, -25), new THREE.Vector3(25, 10, 25)); // Define the building boundaries
+// === Setup Level ===
+const level = new Level1(scene); // This will add walls and other level details
+const wallBoundingBoxes = level.getWallBoundingBoxes(); // Get wall bounding boxes from Level1
 
-  // Function to check if a position is within the building bounds and does not collide with existing furniture
-  function isValidPosition(position) {
-    const testBox = new THREE.Box3().setFromCenterAndSize(position, new THREE.Vector3(0.5, 0.5, 0.5)); // Assuming a small size for collision testing
-    return buildingBounds.containsPoint(position) && !furniture.some(box => box.intersectsBox(testBox));
-  }
+// Add ceiling after creating walls
+createCeiling(50, 5, 50, baseColorTexture); // Adjust dimensions as per the building
 
-  // Create various pieces of furniture
-  const furnitureSpecs = [
-    { type: "table", geometry: new THREE.BoxGeometry(2,5,2), material: new THREE.MeshStandardMaterial({ color: 0x8B4513 }) },
-    { type: "chair", geometry: new THREE.BoxGeometry(2,5,2), material: new THREE.MeshStandardMaterial({ color: 0x654321 }) },
-    { type: "shelf", geometry: new THREE.BoxGeometry(2,5,2), material: new THREE.MeshStandardMaterial({ color: 0x3B2F25 }) },
-  ];
+// Add ceiling lights
+function createCeilingLight(x, y, z, flickering=false) {
+  const light = new THREE.PointLight(0xffffff, 10.5, 1000); // Increased intensity
+  light.position.set(x, y, z);
+  scene.add(light);
 
-  furnitureSpecs.forEach(spec => {
-    let position;
-    do {
-      position = new THREE.Vector3(
-        Math.random() * (buildingBounds.max.x - buildingBounds.min.x) + buildingBounds.min.x,
-        0.5, // Assuming all furniture is placed at a height of 0.5
-        Math.random() * (buildingBounds.max.z - buildingBounds.min.z) + buildingBounds.min.z
-      );
-    } while (!isValidPosition(position));
+  // Create a small sphere to represent the light bulb
+  const lightBulbGeometry = new THREE.SphereGeometry(0.6);
+  const lightBulbMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+  const lightBulb = new THREE.Mesh(lightBulbGeometry, lightBulbMaterial);
+  lightBulb.position.copy(light.position);
+  scene.add(lightBulb);
 
-    const furniturePiece = new THREE.Mesh(spec.geometry, spec.material);
-    furniturePiece.position.copy(position);
-    furniturePiece.castShadow = true;
-    furniturePiece.receiveShadow = true;
-    scene.add(furniturePiece);
-    furniture.push(new THREE.Box3().setFromObject(furniturePiece)); // Create a bounding box for collision
-  });
-
-  // Additional eerie objects
-  const candleGeometry = new THREE.CylinderGeometry(2,5,2, 32);
-  const candleMaterial = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
-  let candlePosition;
-  do {
-    candlePosition = new THREE.Vector3(
-      Math.random() * (buildingBounds.max.x - buildingBounds.min.x) + buildingBounds.min.x,
-      0.1,
-      Math.random() * (buildingBounds.max.z - buildingBounds.min.z) + buildingBounds.min.z
-    );
-  } while (!isValidPosition(candlePosition));
-  const candle = new THREE.Mesh(candleGeometry, candleMaterial);
-  candle.position.copy(candlePosition);
-  candle.castShadow = true;
-  scene.add(candle);
-
-  const spookyPictureGeometry = new THREE.PlaneGeometry(2,5,2);
-  const spookyPictureMaterial = new THREE.MeshStandardMaterial({
-    map: new THREE.TextureLoader().load('./public/spooky-picture.png'), // Replace with your spooky picture texture
-  });
-  let spookyPicturePosition;
-  do {
-    spookyPicturePosition = new THREE.Vector3(
-      Math.random() * (buildingBounds.max.x - buildingBounds.min.x) + buildingBounds.min.x,
-      1,
-      Math.random() * (buildingBounds.max.z - buildingBounds.min.z) + buildingBounds.min.z
-    );
-  } while (!isValidPosition(spookyPicturePosition));
-  const spookyPicture = new THREE.Mesh(spookyPictureGeometry, spookyPictureMaterial);
-  spookyPicture.position.copy(spookyPicturePosition);
-  scene.add(spookyPicture);
-
-  return furniture;
+    // Flickering effect
+    if (flickering) {
+      const flickerClock = new THREE.Clock();
+      const flickerSpeed = 10; // Adjust the flickering speed
+      const intensityRange = 20; // Adjust the intensity range
+  
+      function flickerLight() {
+        const elapsedTime = flickerClock.getElapsedTime();
+        const intensity = Math.sin(elapsedTime * flickerSpeed) * intensityRange + 10.5;
+        light.intensity = intensity;
+      }
+  
+      // Update the flickering effect in the animation loop
+      const updateFlicker = () => {
+        flickerLight();
+        requestAnimationFrame(updateFlicker);
+      };
+  
+      updateFlicker();
+    }
 }
-const furnitureBoundingBoxes = createFurniture();
+
+// Create multiple ceiling lights
+createCeilingLight(15, 5, 10,true);
+createCeilingLight(-13, 5, 12);
+createCeilingLight(-20, 5, 20);
+createCeilingLight(-5, 5, -5);
+createCeilingLight(20, 5, -15,true);
+createCeilingLight(13, 5, -10);
+
+// === Random Ghost Flickers ===
+const ghostGeometry = new THREE.SphereGeometry(0.5);
+const ghostMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaee, transparent: true, opacity: 0.3 });
+const ghost = new THREE.Mesh(ghostGeometry, ghostMaterial);
+
+function randomFlickerGhost() {
+  setInterval(() => {
+    ghost.position.set(
+      (Math.random() - 0.5) * 40, // Random X position
+      Math.random() * 5, // Random Y position
+      (Math.random() - 0.5) * 40 // Random Z position
+    );
+    ghost.material.opacity = Math.random() * 0.3 + 0.3;
+    scene.add(ghost);
+
+    setTimeout(() => {
+      scene.remove(ghost);
+    }, 2000); // Remove after 2 seconds
+  }, 15000); // Every 15 seconds
+}
+
+randomFlickerGhost();
+
 
 // === Clock for Animation Mixer ===
 const clock = new THREE.Clock();
@@ -197,10 +206,6 @@ window.addEventListener("keyup", (event) => {
   keysPressed[event.key.toLowerCase()] = false;
 });
 
-// === Setup Level ===
-const level = new Level1(scene); // This will add walls and other level details
-const wallBoundingBoxes = level.getWallBoundingBoxes(); // Get wall bounding boxes from Level1
-
 // === Sliding Collision Detection ===
 function checkAndResolveCollision(deltaX, deltaZ) {
   const originalPosition = new THREE.Vector3().copy(model.position);
@@ -213,8 +218,8 @@ function checkAndResolveCollision(deltaX, deltaZ) {
   model.position.x += deltaX;
   modelBoundingBox.setFromObject(model);
 
-  // Check collision with walls and furniture
-  for (const boundingBox of [...wallBoundingBoxes, ...furnitureBoundingBoxes]) {
+  // Check collision with walls
+  for (const boundingBox of wallBoundingBoxes) {
     if (modelBoundingBox.intersectsBox(boundingBox)) {
       collidedX = true;
       model.position.x = originalPosition.x; // Revert X movement on collision
@@ -226,7 +231,7 @@ function checkAndResolveCollision(deltaX, deltaZ) {
   model.position.z += deltaZ;
   modelBoundingBox.setFromObject(model);
 
-  for (const boundingBox of [...wallBoundingBoxes, ...furnitureBoundingBoxes]) {
+  for (const boundingBox of wallBoundingBoxes) {
     if (modelBoundingBox.intersectsBox(boundingBox)) {
       collidedZ = true;
       model.position.z = originalPosition.z; // Revert Z movement on collision
@@ -242,8 +247,6 @@ function checkAndResolveCollision(deltaX, deltaZ) {
   if (collidedZ && !collidedX) {
     model.position.x = originalPosition.x + deltaX;
   }
-
-  return { collidedX, collidedZ };
 }
 
 // === Animation Loop ===
@@ -274,7 +277,7 @@ function animate() {
     }
 
     // Resolve collisions
-    const { collidedX, collidedZ } = checkAndResolveCollision(deltaX, deltaZ);
+    checkAndResolveCollision(deltaX, deltaZ);
 
     if (keysPressed["a"] || keysPressed["arrowleft"]) {
       model.rotation.y += rotateSpeed;
