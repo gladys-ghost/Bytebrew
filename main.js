@@ -118,6 +118,20 @@ loader.load(
   (error) => console.error("An error occurred while loading the GLB model:", error)
 );
 
+// === Sound Effects ===
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+const sound = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+
+audioLoader.load('./public/sounds/wind.mp3', (buffer) => {
+  sound.setBuffer(buffer);
+  sound.setLoop(true);
+  sound.setVolume(0.5);
+  sound.play();
+});
+
 // === Setup Level ===
 const level = new Level1(scene); // This will add walls and other level details
 const wallBoundingBoxes = level.getWallBoundingBoxes(); // Get wall bounding boxes from Level1
@@ -167,30 +181,6 @@ createCeilingLight(-20, 5, 20);
 createCeilingLight(-5, 5, -5);
 createCeilingLight(20, 5, -15,true);
 createCeilingLight(13, 5, -10);
-
-// === Random Ghost Flickers ===
-const ghostGeometry = new THREE.SphereGeometry(0.5);
-const ghostMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaee, transparent: true, opacity: 0.3 });
-const ghost = new THREE.Mesh(ghostGeometry, ghostMaterial);
-
-function randomFlickerGhost() {
-  setInterval(() => {
-    ghost.position.set(
-      (Math.random() - 0.5) * 40, // Random X position
-      Math.random() * 5, // Random Y position
-      (Math.random() - 0.5) * 40 // Random Z position
-    );
-    ghost.material.opacity = Math.random() * 0.3 + 0.3;
-    scene.add(ghost);
-
-    setTimeout(() => {
-      scene.remove(ghost);
-    }, 2000); // Remove after 2 seconds
-  }, 15000); // Every 15 seconds
-}
-
-randomFlickerGhost();
-
 
 // === Clock for Animation Mixer ===
 const clock = new THREE.Clock();
