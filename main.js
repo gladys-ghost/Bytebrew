@@ -4,7 +4,7 @@ import Level1 from "./World/Level1"; // Assuming Level1 class handles wall creat
 
 // === Scene Setup ===
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xffffff);
+scene.background = new THREE.Color(0x000000); // Dark background for a haunted feel
 
 // === Camera Setup ===
 const camera = new THREE.PerspectiveCamera(
@@ -29,16 +29,27 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// === Lighting Setup ===
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+// === Lighting ===
+const ambientLight = new THREE.AmbientLight(0x444466, 0.5);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-directionalLight.position.set(5, 10, 7.5);
+const ghostLight = new THREE.SpotLight(0xaaaaee, 1.0, 100, Math.PI / 8, 0.5, 1);
+ghostLight.position.set(5, 20, 5);
+ghostLight.castShadow = true;
+scene.add(ghostLight);
+
+const directionalLight = new THREE.DirectionalLight(0x666666, 0.3);
+directionalLight.position.set(0, 20, 0);
 directionalLight.castShadow = true;
-directionalLight.shadow.mapSize.width = 1024;
-directionalLight.shadow.mapSize.height = 1024;
 scene.add(directionalLight);
+
+// Flicker effect for ghost light
+function flickerLight(light) {
+  light.intensity = Math.random() * 0.5 + 0.7;
+}
+setInterval(() => {
+  flickerLight(ghostLight);
+}, 200); // Flicker every 200ms
 
 // === Ground Plane ===
 const groundGeometry = new THREE.PlaneGeometry(50, 50);
@@ -86,12 +97,6 @@ loader.load(
     });
 
     scene.add(model);
-
-    // Bounding box for collision detection
-    
-    
-    console.log(modelBoundingBox);
-
     mixer = new THREE.AnimationMixer(model);
 
     if (gltf.animations && gltf.animations.length) {
@@ -105,6 +110,78 @@ loader.load(
   (xhr) => console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`),
   (error) => console.error("An error occurred while loading the GLB model:", error)
 );
+
+// === Function to Create Furniture ===
+function createFurniture() {
+  const furniture = [];
+  const buildingBounds = new THREE.Box3(new THREE.Vector3(-25, 0, -25), new THREE.Vector3(25, 10, 25)); // Define the building boundaries
+
+  // Function to check if a position is within the building bounds and does not collide with existing furniture
+  function isValidPosition(position) {
+    const testBox = new THREE.Box3().setFromCenterAndSize(position, new THREE.Vector3(0.5, 0.5, 0.5)); // Assuming a small size for collision testing
+    return buildingBounds.containsPoint(position) && !furniture.some(box => box.intersectsBox(testBox));
+  }
+
+  // Create various pieces of furniture
+  const furnitureSpecs = [
+    { type: "table", geometry: new THREE.BoxGeometry(2,5,2), material: new THREE.MeshStandardMaterial({ color: 0x8B4513 }) },
+    { type: "chair", geometry: new THREE.BoxGeometry(2,5,2), material: new THREE.MeshStandardMaterial({ color: 0x654321 }) },
+    { type: "shelf", geometry: new THREE.BoxGeometry(2,5,2), material: new THREE.MeshStandardMaterial({ color: 0x3B2F25 }) },
+  ];
+
+  furnitureSpecs.forEach(spec => {
+    let position;
+    do {
+      position = new THREE.Vector3(
+        Math.random() * (buildingBounds.max.x - buildingBounds.min.x) + buildingBounds.min.x,
+        0.5, // Assuming all furniture is placed at a height of 0.5
+        Math.random() * (buildingBounds.max.z - buildingBounds.min.z) + buildingBounds.min.z
+      );
+    } while (!isValidPosition(position));
+
+    const furniturePiece = new THREE.Mesh(spec.geometry, spec.material);
+    furniturePiece.position.copy(position);
+    furniturePiece.castShadow = true;
+    furniturePiece.receiveShadow = true;
+    scene.add(furniturePiece);
+    furniture.push(new THREE.Box3().setFromObject(furniturePiece)); // Create a bounding box for collision
+  });
+
+  // Additional eerie objects
+  const candleGeometry = new THREE.CylinderGeometry(2,5,2, 32);
+  const candleMaterial = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
+  let candlePosition;
+  do {
+    candlePosition = new THREE.Vector3(
+      Math.random() * (buildingBounds.max.x - buildingBounds.min.x) + buildingBounds.min.x,
+      0.1,
+      Math.random() * (buildingBounds.max.z - buildingBounds.min.z) + buildingBounds.min.z
+    );
+  } while (!isValidPosition(candlePosition));
+  const candle = new THREE.Mesh(candleGeometry, candleMaterial);
+  candle.position.copy(candlePosition);
+  candle.castShadow = true;
+  scene.add(candle);
+
+  const spookyPictureGeometry = new THREE.PlaneGeometry(2,5,2);
+  const spookyPictureMaterial = new THREE.MeshStandardMaterial({
+    map: new THREE.TextureLoader().load('./public/spooky-picture.png'), // Replace with your spooky picture texture
+  });
+  let spookyPicturePosition;
+  do {
+    spookyPicturePosition = new THREE.Vector3(
+      Math.random() * (buildingBounds.max.x - buildingBounds.min.x) + buildingBounds.min.x,
+      1,
+      Math.random() * (buildingBounds.max.z - buildingBounds.min.z) + buildingBounds.min.z
+    );
+  } while (!isValidPosition(spookyPicturePosition));
+  const spookyPicture = new THREE.Mesh(spookyPictureGeometry, spookyPictureMaterial);
+  spookyPicture.position.copy(spookyPicturePosition);
+  scene.add(spookyPicture);
+
+  return furniture;
+}
+const furnitureBoundingBoxes = createFurniture();
 
 // === Clock for Animation Mixer ===
 const clock = new THREE.Clock();
@@ -135,9 +212,10 @@ function checkAndResolveCollision(deltaX, deltaZ) {
   // Attempt to move along the X-axis
   model.position.x += deltaX;
   modelBoundingBox.setFromObject(model);
-  
-  for (const wallBoundingBox of wallBoundingBoxes) {
-    if (modelBoundingBox.intersectsBox(wallBoundingBox)) {
+
+  // Check collision with walls and furniture
+  for (const boundingBox of [...wallBoundingBoxes, ...furnitureBoundingBoxes]) {
+    if (modelBoundingBox.intersectsBox(boundingBox)) {
       collidedX = true;
       model.position.x = originalPosition.x; // Revert X movement on collision
       break;
@@ -148,8 +226,8 @@ function checkAndResolveCollision(deltaX, deltaZ) {
   model.position.z += deltaZ;
   modelBoundingBox.setFromObject(model);
 
-  for (const wallBoundingBox of wallBoundingBoxes) {
-    if (modelBoundingBox.intersectsBox(wallBoundingBox)) {
+  for (const boundingBox of [...wallBoundingBoxes, ...furnitureBoundingBoxes]) {
+    if (modelBoundingBox.intersectsBox(boundingBox)) {
       collidedZ = true;
       model.position.z = originalPosition.z; // Revert Z movement on collision
       break;
