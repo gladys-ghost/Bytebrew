@@ -5,10 +5,13 @@ import listener from "./audioListener.js";
 import camera from "../camera.js"
 import { cos } from "three/webgpu";
 
+
 export default class Level1 {
-  constructor(scene) {
+  constructor(scene, player) {
     this.scene = scene;
+    this.player = player;
     this.offset = new Wall(0, 0, 0, 0, 0).wallWidth / 2;
+    this.objects = [];
 
     // Array to store bounding boxes for all walls
     this.wallBoundingBoxes = [];
@@ -16,13 +19,22 @@ export default class Level1 {
     const gltfLoader = new GLTFLoader();
     let doorModel;
 
+    this.monstersDead = false;
+
+    let doorType = this.monstersDead ? "unlocked.glb" : "scene.gltf";
+
+
+    // this.player.position.set(-23.83, 1.6, -24.9);
+    console.log("Player:::: ",this.player);
+
+
     gltfLoader.load(
-      "/science_lab_door_-_apocalyptic/scene.gltf",
+      `/science_lab_door_-_apocalyptic/${doorType}`,
       (gltf) => {
         doorModel = gltf.scene;
         console.log(doorModel);
         doorModel.scale.set(2, 1.5, 1);
-        doorModel.position.set(-23.83, 1.6, -24.8);
+        doorModel.position.set(-23.83, 1.6, -24.9);
         this.scene.add(doorModel);
       },
       undefined,
@@ -186,31 +198,6 @@ export default class Level1 {
 
         // Clone walls and create a new group for the second room
         this.anotherRoomGroup = this.enemyRoomGroup.clone();
-
-        // // Clone the doors manually
-        // let roomDoorClone1 = roomDoorModel.clone();
-        // roomDoorClone1.position.set(2, 0.5, 15);
-        // this.anotherRoomGroup.add(roomDoorClone1);
-
-        // let roomDoorClone2 = anotherDoor.clone();
-        // roomDoorClone2.position.set(18, 0.5, 15);
-        // this.anotherRoomGroup.add(roomDoorClone2);
-
-        // // Add walls to the cloned room
-        // let clonedWall1 = this.enemyRoomWall1.mesh.clone();
-        // let clonedWall2 = this.enemyRoomWall2.mesh.clone();
-        // let clonedWall3 = this.enemyRoomWall3.mesh.clone();
-        // let clonedWall4 = this.enemyRoomWall4.mesh.clone();
-        // let clonedWall5 = this.enemyRoomWall5.mesh.clone();
-
-        // this.anotherRoomGroup.add(clonedWall1);
-        // this.anotherRoomGroup.add(clonedWall2);
-        // this.anotherRoomGroup.add(clonedWall3);
-        // this.anotherRoomGroup.add(clonedWall4);
-        // this.anotherRoomGroup.add(clonedWall5);
-
-        // // Position the second room
-        // this.anotherRoomGroup.position.set(0, 0, 0);
         this.anotherRoomGroup.rotation.set(0, Math.PI/2, 0);
         this.addBoundingBox(this.anotherRoomGroup);
         // Add the cloned room to the scene
@@ -589,5 +576,15 @@ const audioLoader = new THREE.AudioLoader();
   }
   getWallBoundingBoxes() {
     return this.wallBoundingBoxes;
+  }
+  setMonstersDead(){
+    this.monstersDead = true;
+  }
+
+  clearScene() {
+    this.scene.remove(this.labGroup);
+    this.scene.remove(this.anotherRoomGroup);
+    this.scene.remove(this.enemyRoomGroup);
+    this.scene.remove(this.bedroomGroup);
   }
 }
