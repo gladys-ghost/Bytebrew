@@ -414,9 +414,14 @@ function checkGhostCollisions() {
     ghostManager.ghosts.forEach(ghost => {
         if (!ghost.model) return;
         
-        const ghostBox = new THREE.Box3().setFromObject(ghost.model);
-        if (ghostBox.intersectsBox(playerBox)) {
-            damagePlayer(10);
+        console.log(ghost.model.position)
+
+
+        let x =  Math.abs(ghost.model.position.x  - model.position.x)
+        let y = Math.abs(ghost.model.position.y  - model.position.y)
+        console.log(x+y<5)
+        if (x+y<5) {
+            damagePlayer(0.05);
         }
     });
   }
@@ -653,6 +658,7 @@ function animate() {
 
   const delta = clock.getDelta();
 
+  checkGhostCollisions();
   if (mixer) mixer.update(delta);
 
   const walkSpeed = 5 * delta;
