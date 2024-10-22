@@ -1,9 +1,12 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import BossModel from "./bossModel";
 import Level1 from "./World/Level1";
 import Level2 from "./World/Level2";
 import { createGhostManager, updateGhosts } from './ghostManager';
 
+
+let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
 
@@ -97,6 +100,7 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+
 // === Lighting Setup ===
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
@@ -138,6 +142,13 @@ let shootAction;
 let gunModel;
 let bulletModel;
 
+//===== Boss Model ===
+const bossModel = new BossModel(scene);
+bossModel.loadModel().then(() => {
+  bossModel.playAnimation("Idle");
+  bossModel.model.position.set(0, 0, -10);
+});
+
 const clock = new THREE.Clock();
 
 // === Movement Controls ===
@@ -157,21 +168,22 @@ window.addEventListener("keyup", (event) => {
 
 // === Mouse Controls ===
 let mouseSensitivity = 0.002;
-let previousMouseX = window.innerWidth / 2;
-let previousMouseY = window.innerHeight / 2;
-let pitch = 0;
-let maxPitch = Math.PI / 2;
+let previousMouseX = window.innerWidth / 2; // Centered initially
+let previousMouseY = window.innerHeight / 2; // Centered initially
+let pitch = 0; // For up and down (vertical rotation)
+let maxPitch = Math.PI / 2; // 90 degrees limit for looking up or down
 
-document.body.requestPointerLock =
-  document.body.requestPointerLock ||
-  document.body.mozRequestPointerLock ||
-  document.body.webkitRequestPointerLock;
+// Request pointer lock for more natural first-person movement
+document.body.requestPointerLock = document.body.requestPointerLock || 
+                                   document.body.mozRequestPointerLock || 
+                                   document.body.webkitRequestPointerLock;
 
 document.body.onclick = () => {
   document.body.requestPointerLock();
 };
 
-window.addEventListener("mousemove", (event) => {
+window.addEventListener('mousemove', (event) => {
+  // If pointer lock is active, use movementX and movementY for relative movement
   const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
   const deltaY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
 
@@ -187,8 +199,8 @@ window.addEventListener("mousemove", (event) => {
 });
 
 // === Shooting Input ===
-window.addEventListener("mousedown", (event) => {
-  if (event.button === 0) {
+window.addEventListener('mousedown', (event) => {
+  if (event.button === 0) { // Left mouse button
     triggerShooting();
   }
 });
@@ -198,14 +210,21 @@ const raycaster = new THREE.Raycaster();
 const shootDirection = new THREE.Vector3();
 const shootOrigin = new THREE.Vector3();
 const bullets = [];
-
-window.singletons = {
-  audio: document.getElementById("myAudio"),
-  shootSound: new Audio("./public/shot.mp3"),
-};
+// === Trigger Shooting Function ===
+// Create an audio listener and add it to the camera
+window.singletons={
+  audio: document.getElementById('myAudio'),
+  shootSound: new Audio('./public/shot.mp3'),
+}
 
 function triggerShooting() {
-  if (!shootAction || shootAction.isRunning()) return;
+  if (!shootAction) {
+    console.warn('Shooting action is not available.');
+    return;
+  }
+
+  // If the shooting animation is already playing, do not trigger again
+  if (shootAction.isRunning()) return;
 
   if (walkAction && walkAction.isRunning()) {
     walkAction.paused = true;
@@ -214,19 +233,24 @@ function triggerShooting() {
   shootAction.reset();
   shootAction.play();
   window.singletons.shootSound.playbackRate = 1;
-  window.singletons.shootSound
-    .play()
-    .then(() => console.log("Sound is playing"))
-    .catch((e) => console.log("Error playing sound: ", e));
+  window.singletons.shootSound.play().then(() => {
+    console.log("Sound is playing");
+  }).catch(e => console.log("Error playing sound: ", e));
 
-  mixer.addEventListener("finished", onShootAnimationFinished);
+
+
+  // Listen for the shooting animation to finish
+  mixer.addEventListener('finished', onShootAnimationFinished);
   createBullet();
 }
 
 function onShootAnimationFinished(event) {
   if (event.action === shootAction) {
-    mixer.removeEventListener("finished", onShootAnimationFinished);
-    if (keysPressed["w"] || keysPressed["arrowup"] || keysPressed["s"] || keysPressed["arrowdown"]) {
+    // Remove the event listener to prevent multiple triggers
+    mixer.removeEventListener('finished', onShootAnimationFinished);
+
+    // Resume walking animation if movement keys are pressed
+    if (keysPressed['w'] || keysPressed['arrowup'] || keysPressed['s'] || keysPressed['arrowdown']) {
       if (walkAction) {
         walkAction.paused = false;
       }
@@ -249,7 +273,8 @@ for (let i = 0; i < 3; i++) {
   object.receiveShadow = true;
 
   objects.push(object);
-  objectHitCount[object.uuid] = 0;
+  objectHitCount[object.uuid] = 0; // Initialize hit count for each object
+  
   scene.add(object);
 }
 
@@ -277,7 +302,7 @@ loader.load(
     mixer = new THREE.AnimationMixer(model);
 
     if (gltf.animations && gltf.animations.length) {
-      const walkClip = THREE.AnimationClip.findByName(gltf.animations, "npc_walk_pistol");
+      const walkClip = THREE.AnimationClip.findByName(gltf.animations, 'npc_walk_pistol');
       if (walkClip) {
         walkAction = mixer.clipAction(walkClip);
         walkAction.setLoop(THREE.LoopRepeat, Infinity);
@@ -288,9 +313,11 @@ loader.load(
         walkAction.setLoop(THREE.LoopRepeat, Infinity);
         walkAction.play();
         walkAction.paused = true;
+        console.warn('Walk animation "npc_walk_pistol" not found. Using the first available animation.');
       }
 
-      const shootClip = THREE.AnimationClip.findByName(gltf.animations, "npc_shooting_pistol");
+      // === Shooting Animation Setup ===
+      const shootClip = THREE.AnimationClip.findByName(gltf.animations, 'npc_shooting_pistol');
       if (shootClip) {
         shootAction = mixer.clipAction(shootClip);
         shootAction.setLoop(THREE.LoopOnce, 1);
@@ -301,45 +328,62 @@ loader.load(
 
     loadGun();
   },
-  (xhr) => console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`),
-  (error) => console.error("An error occurred while loading the player model:", error)
+  function (xhr) {
+    console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`);
+  },
+  function (error) {
+    console.error('An error occurred while loading the player model:', error);
+  }
 );
 
 // === Load Gun and Bullet Models ===
 function loadGun() {
   loader.load(
-    "./public/gun.glb",
+    './public/gun.glb', // Path to the gun model
     function (gltf) {
       gunModel = gltf.scene;
       gunModel.scale.set(3.5, 3.5, 3.5);
 
       model.traverse((child) => {
-        if (child.isMesh) {
+        if (child.isBone) {
+          console.log('Bone:', child.name); // Logs the bone name
+        } else if (child.isMesh) {
+          console.log('Mesh:', child.name); // Logs mesh names
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
 
-      const handBone = model.getObjectByName("mixamorigRightHand");
+      // Attach the gun to the player's hand (assuming the hand bone is known or manually positioning it)
+      // Replace 'mixamorigRightHand' with the correct bone name if different
+      const handBone = model.getObjectByName('mixamorigRightHand'); // Replace with actual bone name if different
       if (handBone) {
         handBone.add(gunModel);
         gunModel.position.set(0.1, 0.6, 0.35);
         const lookDirection = new THREE.Vector3(
-          Math.sin(model.rotation.y),
-          0,
-          Math.cos(model.rotation.y)
+          Math.sin(model.rotation.y), // Forward direction in X
+          0,                          // No vertical rotation
+          Math.cos(model.rotation.y)   // Forward direction in Z
         ).normalize();
         const gunRotation = new THREE.Quaternion();
-        gunRotation.setFromUnitVectors(new THREE.Vector3(-4.5, 5, -0.4), lookDirection);
-        gunModel.quaternion.copy(gunRotation);
+  
+        // Set the rotation of the gun to point in the look direction
+        gunRotation.setFromUnitVectors(new THREE.Vector3(-4.5, 5,-0.4), lookDirection); // Assuming gun's forward is in the -Z direction
+        gunModel.quaternion.copy(gunRotation); // Apply the calculated rotation to the gun
+        console.log("Gun attached to player's hand");
       } else {
         gunModel.position.set(0.5, 1.2, 0.3);
         model.add(gunModel);
       }
       loadBulletModel();
     },
-    null,
-    (error) => console.error("An error occurred while loading the gun model:", error)
+    function (xhr) {
+      console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`);
+    },
+    function (error) {
+      console.error('An error occurred while loading the gun model:', error);
+
+    }
   );
 }
 
@@ -362,19 +406,23 @@ function updateBullets(delta) {
       continue;
     }
 
-    objects.forEach((obj, index) => {
-      const objBox = new THREE.Box3().setFromObject(obj);
-      const bulletBox = new THREE.Box3().setFromObject(bullet);
-
+    // Check for collisions with objects
+    objects.forEach((obj) => {
+      const objBox = new THREE.Box3().setFromObject(obj); // Get the object's bounding box
+      const bulletBox = new THREE.Box3().setFromObject(bullet); // Get the bullet's bounding box
+      
       if (objBox.intersectsBox(bulletBox)) {
         if (!objectHitCount[obj.uuid]) {
           objectHitCount[obj.uuid] = 0;
         }
         objectHitCount[obj.uuid]++;
         
+        console.log(`Object hit! Total hits: ${objectHitCount[obj.uuid]}`);
+
+        // If the object has been hit twice, remove it
         if (objectHitCount[obj.uuid] >= 2) {
           scene.remove(obj);
-          objects.splice(index, 1);
+          console.log("Object destroyed!");
         }
 
         scene.remove(bullet);
@@ -470,13 +518,12 @@ const startMenu = document.getElementById("startMenu");
 const optionsScreen = document.getElementById("optionsScreen");
 const creditsScreen = document.getElementById("creditsScreen");
 
-const startButton = document.getElementById("startButton");
-const optionsButton = document.getElementById("optionsButton");
-const creditsButton = document.getElementById("creditsButton");
-const saveOptionsButton = document.getElementById("saveOptionsButton");
-const closeCreditsButton = document.getElementById("closeCreditsButton");
+const startButton = document.getElementById('startButton');
+const optionsButton = document.getElementById('optionsButton');
+const creditsButton = document.getElementById('creditsButton');
+const saveOptionsButton = document.getElementById('saveOptionsButton');
+const closeCreditsButton = document.getElementById('closeCreditsButton');
 
-let gameStarted = false;
 
 // Start the game
 startButton.addEventListener("click", () => {
@@ -535,7 +582,7 @@ function applyOptions() {
 }
 
 // Call applyOptions when saving options
-saveOptionsButton.addEventListener("click", applyOptions);
+saveOptionsButton.addEventListener('click', applyOptions);
 
 
 
@@ -656,15 +703,19 @@ function animate() {
 
   if (mixer) mixer.update(delta);
 
+  if (bossModel.model) {
+    bossModel.update(delta);
+    if(gameStarted){
+      bossModel.moveTowardsTarget(model);
+    }
+  }
   const walkSpeed = 5 * delta;
   const rotateSpeed = Math.PI * delta;
 
   let isMoving = false;
 
 
-    
   
-  // Rotate target cube
   targetCube.rotation.y += 0.01;
   
   updateGhosts(ghostManager, delta);
@@ -732,4 +783,4 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-export { animate, scene, model };
+export { animate, scene };

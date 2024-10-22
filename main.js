@@ -1,9 +1,6 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import Level1 from "./World/Level1"; // Assuming Level1 class handles wall creation
 import {animate} from './playerModel';
 import {scene} from './playerModel';
-import { model } from "./playerModel";
 
 animate();
 
