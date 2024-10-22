@@ -4,6 +4,68 @@ import Level1 from "./World/Level1";
 import Level2 from "./World/Level2";
 import { createGhostManager, updateGhosts } from './ghostManager';
 
+let playerHealth = 100;
+const maxPlayerHealth = 100;
+
+const healthDisplay = document.createElement('div');
+healthDisplay.style.position = 'fixed';
+healthDisplay.style.top = '20px';
+healthDisplay.style.left = '20px';
+healthDisplay.style.padding = '10px';
+healthDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+healthDisplay.style.color = 'white';
+healthDisplay.style.fontFamily = 'Arial, sans-serif';
+healthDisplay.style.borderRadius = '5px';
+document.body.appendChild(healthDisplay);
+
+// Health management functions
+function updateHealthDisplay() {
+    healthDisplay.textContent = `Health: ${playerHealth}/${maxPlayerHealth}`;
+    if (playerHealth < 25) {
+        healthDisplay.style.color = '#ff4444';
+    } else if (playerHealth < 50) {
+        healthDisplay.style.color = '#ffaa44';
+    } else {
+        healthDisplay.style.color = '#ffffff';
+    }
+}
+
+function addHealth(amount) {
+    playerHealth = Math.min(playerHealth + amount, maxPlayerHealth);
+    updateHealthDisplay();
+}
+
+function damagePlayer(amount) {
+    playerHealth = Math.max(0, playerHealth - amount);
+    updateHealthDisplay();
+    
+    if (playerHealth <= 0) {
+        gameOver();
+    }
+}
+
+function gameOver() {
+    gameStarted = false;
+    const gameOverScreen = document.createElement('div');
+    gameOverScreen.style.position = 'fixed';
+    gameOverScreen.style.top = '50%';
+    gameOverScreen.style.left = '50%';
+    gameOverScreen.style.transform = 'translate(-50%, -50%)';
+    gameOverScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    gameOverScreen.style.color = 'white';
+    gameOverScreen.style.padding = '20px';
+    gameOverScreen.style.textAlign = 'center';
+    gameOverScreen.style.borderRadius = '10px';
+    gameOverScreen.innerHTML = `
+        <h2>Game Over</h2>
+        <button onclick="window.location.reload()">Retry</button>
+    `;
+    document.body.appendChild(gameOverScreen);
+}
+
+// Initialize health display
+updateHealthDisplay();
+
 const audio = document.getElementById("myAudio");
 audio.volume = 0.05;
 
@@ -15,10 +77,10 @@ const ghostManager = createGhostManager(scene);
 
 // === Camera Setup ===
 const camera = new THREE.PerspectiveCamera(
-  75, // Field of view
-  window.innerWidth / window.innerHeight, // Aspect ratio
-  0.1, // Near clipping plane
-  1000 // Far clipping plane
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
 );
 
 // === Renderer Setup ===
@@ -38,7 +100,6 @@ window.addEventListener("resize", () => {
 // === Lighting Setup ===
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
-
 
 const targetCube = new THREE.Mesh(
   new THREE.BoxGeometry(5, 5, 5),
@@ -70,13 +131,11 @@ scene.add(ground);
 // === GLTF Loader ===
 const loader = new GLTFLoader();
 
-
-
 let mixer;
 let model;
 let walkAction;
-let shootAction; // Will store the shooting animation
-let gunModel; // Will store the gun model
+let shootAction;
+let gunModel;
 let bulletModel;
 
 const clock = new THREE.Clock();
@@ -98,12 +157,11 @@ window.addEventListener("keyup", (event) => {
 
 // === Mouse Controls ===
 let mouseSensitivity = 0.002;
-let previousMouseX = window.innerWidth / 2; // Centered initially
-let previousMouseY = window.innerHeight / 2; // Centered initially
-let pitch = 0; // For up and down (vertical rotation)
-let maxPitch = Math.PI / 2; // 90 degrees limit for looking up or down
+let previousMouseX = window.innerWidth / 2;
+let previousMouseY = window.innerHeight / 2;
+let pitch = 0;
+let maxPitch = Math.PI / 2;
 
-// Request pointer lock for more natural first-person movement
 document.body.requestPointerLock =
   document.body.requestPointerLock ||
   document.body.mozRequestPointerLock ||
@@ -114,27 +172,16 @@ document.body.onclick = () => {
 };
 
 window.addEventListener("mousemove", (event) => {
-  // If pointer lock is active, use movementX and movementY for relative movement
-  const deltaX =
-    event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-  const deltaY =
-    event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+  const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+  const deltaY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
 
   if (model) {
-    // Horizontal rotation (yaw) based on mouse X movement
     model.rotation.y -= deltaX * mouseSensitivity;
-
-    // Vertical rotation (pitch) based on mouse Y movement
     pitch -= deltaY * mouseSensitivity;
-
-    // Clamp pitch to avoid flipping upside down (between -90 and 90 degrees)
     pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
-
-    // Apply pitch to the camera for looking up and down
     camera.rotation.x = pitch;
   }
 
-  // Update the previous mouse positions for the next frame (if needed outside pointer lock)
   previousMouseX += deltaX;
   previousMouseY += deltaY;
 });
@@ -142,99 +189,77 @@ window.addEventListener("mousemove", (event) => {
 // === Shooting Input ===
 window.addEventListener("mousedown", (event) => {
   if (event.button === 0) {
-    // Left mouse button
     triggerShooting();
   }
 });
 
-// === Raycaster for Shooting Mechanics (Optional) ===
+// === Raycaster and Shooting Setup ===
 const raycaster = new THREE.Raycaster();
 const shootDirection = new THREE.Vector3();
 const shootOrigin = new THREE.Vector3();
 const bullets = [];
-// === Trigger Shooting Function ===
-// Create an audio listener and add it to the camera
+
 window.singletons = {
   audio: document.getElementById("myAudio"),
   shootSound: new Audio("./public/shot.mp3"),
 };
 
 function triggerShooting() {
-  if (!shootAction) {
-    console.warn("Shooting action is not available.");
-    return;
-  }
+  if (!shootAction || shootAction.isRunning()) return;
 
-  // If the shooting animation is already playing, do not trigger again
-  if (shootAction.isRunning()) return;
-
-  // Pause walking animation if it's playing
   if (walkAction && walkAction.isRunning()) {
     walkAction.paused = true;
   }
 
-  // Play shooting animation
   shootAction.reset();
   shootAction.play();
   window.singletons.shootSound.playbackRate = 1;
   window.singletons.shootSound
     .play()
-    .then(() => {
-      console.log("Sound is playing");
-    })
+    .then(() => console.log("Sound is playing"))
     .catch((e) => console.log("Error playing sound: ", e));
 
-  // Listen for the shooting animation to finish
   mixer.addEventListener("finished", onShootAnimationFinished);
   createBullet();
 }
 
 function onShootAnimationFinished(event) {
   if (event.action === shootAction) {
-    // Remove the event listener to prevent multiple triggers
     mixer.removeEventListener("finished", onShootAnimationFinished);
-
-    // Resume walking animation if movement keys are pressed
-    if (
-      keysPressed["w"] ||
-      keysPressed["arrowup"] ||
-      keysPressed["s"] ||
-      keysPressed["arrowdown"]
-    ) {
+    if (keysPressed["w"] || keysPressed["arrowup"] || keysPressed["s"] || keysPressed["arrowdown"]) {
       if (walkAction) {
         walkAction.paused = false;
       }
     }
   }
 }
-// === Add 3 Objects to the Scene ===
+
+// === Game Objects Setup ===
 const objects = [];
 const objectHitCount = {};
 
-// Create and add objects (cubes in this case)
 for (let i = 0; i < 3; i++) {
   const geometry = new THREE.BoxGeometry(3, 3, 3);
   const material = new THREE.MeshStandardMaterial({
     color: Math.random() * 0xffffff,
   });
   const object = new THREE.Mesh(geometry, material);
-  object.position.set(i * 5 - 5, 0.5, -10); // Adjust positions
+  object.position.set(i * 5 - 5, 0.5, -10);
   object.castShadow = true;
   object.receiveShadow = true;
 
   objects.push(object);
-  objectHitCount[object.uuid] = 0; // Initialize hit count for each object
-
+  objectHitCount[object.uuid] = 0;
   scene.add(object);
 }
+
 // === Load Player Model ===
 loader.load(
   "./public/obn_2.glb",
   function (gltf) {
     model = gltf.scene;
     model.scale.set(0.3, 0.3, 0.3);
-    model.rotation.y = Math.PI; // Rotate 180 degrees to face forward
-    // model.position.set(-20.83, 0, 22.9);
+    model.rotation.y = Math.PI;
     model.position.set(0, 0, 0);
 
     model.traverse((child) => {
@@ -247,183 +272,156 @@ loader.load(
     scene.add(model);
 
     ghostManager.setTarget(model.position);
-ghostManager.startSpawning(5000, 10);
-
+    ghostManager.startSpawning(5000, 5);
 
     mixer = new THREE.AnimationMixer(model);
 
     if (gltf.animations && gltf.animations.length) {
-      const walkClip = THREE.AnimationClip.findByName(
-        gltf.animations,
-        "npc_walk_pistol"
-      );
+      const walkClip = THREE.AnimationClip.findByName(gltf.animations, "npc_walk_pistol");
       if (walkClip) {
         walkAction = mixer.clipAction(walkClip);
         walkAction.setLoop(THREE.LoopRepeat, Infinity);
         walkAction.play();
-        walkAction.paused = true; // Start in a paused state
+        walkAction.paused = true;
       } else {
-        // If 'npc_walk_pistol' not found, use the first animation as a fallback
         walkAction = mixer.clipAction(gltf.animations[0]);
         walkAction.setLoop(THREE.LoopRepeat, Infinity);
         walkAction.play();
         walkAction.paused = true;
-        console.warn(
-          'Walk animation "npc_walk_pistol" not found. Using the first available animation.'
-        );
       }
 
-      // === Shooting Animation Setup ===
-      const shootClip = THREE.AnimationClip.findByName(
-        gltf.animations,
-        "npc_shooting_pistol"
-      );
+      const shootClip = THREE.AnimationClip.findByName(gltf.animations, "npc_shooting_pistol");
       if (shootClip) {
         shootAction = mixer.clipAction(shootClip);
         shootAction.setLoop(THREE.LoopOnce, 1);
-        shootAction.clampWhenFinished = true; // Keeps the last frame when finished
-        shootAction.stop(); // Ensure it's not playing initially
-      } else {
-        console.warn('Shooting animation "npc_shooting_pistol" not found.');
+        shootAction.clampWhenFinished = true;
+        shootAction.stop();
       }
     }
 
-    // Load the gun model and attach it to the player's hand
     loadGun();
   },
-  function (xhr) {
-    console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`);
-  },
-  function (error) {
-    console.error("An error occurred while loading the player model:", error);
-  }
+  (xhr) => console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`),
+  (error) => console.error("An error occurred while loading the player model:", error)
 );
 
-// === Load Gun and Attach to Player ===
+// === Load Gun and Bullet Models ===
 function loadGun() {
   loader.load(
-    "./public/gun.glb", // Path to the gun model
+    "./public/gun.glb",
     function (gltf) {
       gunModel = gltf.scene;
-      gunModel.scale.set(3.5, 3.5, 3.5); // Adjust gun size as necessary
+      gunModel.scale.set(3.5, 3.5, 3.5);
 
       model.traverse((child) => {
-        if (child.isBone) {
-          console.log("Bone:", child.name); // Logs the bone name
-        } else if (child.isMesh) {
-          console.log("Mesh:", child.name); // Logs mesh names
+        if (child.isMesh) {
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
 
-      // Attach the gun to the player's hand (assuming the hand bone is known or manually positioning it)
-      // Replace 'mixamorigRightHand' with the correct bone name if different
-      const handBone = model.getObjectByName("mixamorigRightHand"); // Replace with actual bone name if different
+      const handBone = model.getObjectByName("mixamorigRightHand");
       if (handBone) {
         handBone.add(gunModel);
-        gunModel.position.set(0.1, 0.6, 0.35); // Adjust gun position
+        gunModel.position.set(0.1, 0.6, 0.35);
         const lookDirection = new THREE.Vector3(
-          Math.sin(model.rotation.y), // Forward direction in X
-          0, // No vertical rotation
-          Math.cos(model.rotation.y) // Forward direction in Z
+          Math.sin(model.rotation.y),
+          0,
+          Math.cos(model.rotation.y)
         ).normalize();
         const gunRotation = new THREE.Quaternion();
-
-        // Set the rotation of the gun to point in the look direction
-        gunRotation.setFromUnitVectors(
-          new THREE.Vector3(-4.5, 5, -0.4),
-          lookDirection
-        ); // Assuming gun's forward is in the -Z direction
-        gunModel.quaternion.copy(gunRotation); // Apply the calculated rotation to the gun
-        console.log("Gun attached to player's hand");
+        gunRotation.setFromUnitVectors(new THREE.Vector3(-4.5, 5, -0.4), lookDirection);
+        gunModel.quaternion.copy(gunRotation);
       } else {
-        // If no bone, position manually near the player's hand area
-        gunModel.position.set(0.5, 1.2, 0.3); // Adjust this to match where the hand is located
-        model.add(gunModel); // Add gun to the player model
-        console.log("Gun attached to the player model manually");
+        gunModel.position.set(0.5, 1.2, 0.3);
+        model.add(gunModel);
       }
       loadBulletModel();
     },
-    function (xhr) {
-      console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`);
-    },
-    function (error) {
-      console.error("An error occurred while loading the gun model:", error);
-    }
+    null,
+    (error) => console.error("An error occurred while loading the gun model:", error)
   );
 }
+
 function loadBulletModel() {
   loader.load("./public/bullet.glb", (gltf) => {
     bulletModel = gltf.scene;
-    bulletModel.scale.set(0.05, 0.05, 0.05); // Adjust bullet size
+    bulletModel.scale.set(0.05, 0.05, 0.05);
   });
 }
-// === Update Bullet Positions ===
+
+// === Update Bullets and Collisions ===
 function updateBullets(delta) {
   for (let i = bullets.length - 1; i >= 0; i--) {
-      const bullet = bullets[i];
-      bullet.position.add(bullet.userData.velocity.clone().multiplyScalar(delta));
+    const bullet = bullets[i];
+    bullet.position.add(bullet.userData.velocity.clone().multiplyScalar(delta));
 
-      // Remove bullet if it's too far away
-      if (bullet.position.length() > 100) {
-          scene.remove(bullet);
-          bullets.splice(i, 1);
-          continue;
+    if (bullet.position.length() > 100) {
+      scene.remove(bullet);
+      bullets.splice(i, 1);
+      continue;
+    }
+
+    objects.forEach((obj, index) => {
+      const objBox = new THREE.Box3().setFromObject(obj);
+      const bulletBox = new THREE.Box3().setFromObject(bullet);
+
+      if (objBox.intersectsBox(bulletBox)) {
+        if (!objectHitCount[obj.uuid]) {
+          objectHitCount[obj.uuid] = 0;
+        }
+        objectHitCount[obj.uuid]++;
+        
+        if (objectHitCount[obj.uuid] >= 2) {
+          scene.remove(obj);
+          objects.splice(index, 1);
+        }
+
+        scene.remove(bullet);
+        bullets.splice(i, 1);
       }
+    });
 
-      // Check for collisions with objects
-      objects.forEach((obj, index) => {
-          const objBox = new THREE.Box3().setFromObject(obj);
-          const bulletBox = new THREE.Box3().setFromObject(bullet);
+    ghostManager.ghosts.forEach((ghost, index) => {
+      if (!ghost.model) return;
+      
+      const ghostBox = new THREE.Box3().setFromObject(ghost.model);
+      const bulletBox = new THREE.Box3().setFromObject(bullet);
 
-          if (objBox.intersectsBox(bulletBox)) {
-              if (!objectHitCount[obj.uuid]) {
-                  objectHitCount[obj.uuid] = 0;
-              }
-              objectHitCount[obj.uuid]++;
-              
-              if (objectHitCount[obj.uuid] >= 2) {
-                  scene.remove(obj);
-                  objects.splice(index, 1);
-              }
+      if (ghostBox.intersectsBox(bulletBox)) {
+        if (!ghost.hitCount) {
+          ghost.hitCount = 0;
+        }
+        ghost.hitCount++;
 
-              scene.remove(bullet);
-              bullets.splice(i, 1);
-              return;
-          }
-      });
+        ghostManager.playHitAnimation(ghost);
 
-      // Check for collisions with ghosts
-      ghostManager.ghosts.forEach((ghost, index) => {
-          if (!ghost.model) return;
-          
-          const ghostBox = new THREE.Box3().setFromObject(ghost.model);
-          const bulletBox = new THREE.Box3().setFromObject(bullet);
+        if (ghost.hitCount >= 2) {
+          ghostManager.removeGhost(index);
+        }
 
-          if (ghostBox.intersectsBox(bulletBox)) {
-              // Initialize hit count if it doesn't exist
-              if (!ghost.hitCount) {
-                  ghost.hitCount = 0;
-              }
-              ghost.hitCount++;
-
-              // Play hit animation
-              ghostManager.playHitAnimation(ghost);
-
-              // Remove ghost after certain number of hits (e.g., 3 hits)
-              if (ghost.hitCount >= 3) {
-                  ghostManager.removeGhost(index);
-              }
-
-              // Remove the bullet
-              scene.remove(bullet);
-              bullets.splice(i, 1);
-              return;
-          }
-      });
+        scene.remove(bullet);
+        bullets.splice(i, 1);
+      }
+    });
   }
 }
+
+function checkGhostCollisions() {
+    if (!model) return;
+    
+    const playerBox = new THREE.Box3().setFromObject(model);
+    
+    ghostManager.ghosts.forEach(ghost => {
+        if (!ghost.model) return;
+        
+        const ghostBox = new THREE.Box3().setFromObject(ghost.model);
+        if (ghostBox.intersectsBox(playerBox)) {
+            damagePlayer(10);
+        }
+    });
+  }
+
 function createBullet() {
   if (!bulletModel) {
     console.error("Bullet model is not loaded.");

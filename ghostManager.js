@@ -14,9 +14,10 @@ class GhostManager {
             minZ: -100,
             maxZ: 100
         };
-        this.hitSound = new Audio('/shot.mp3'); // Add appropriate sound file
-        this.deathSound = new Audio('/shot.mp3'); // Add appropriate sound file
+        this.hitSound = new Audio('/shot.mp3');
+        this.deathSound = new Audio('/die.mp3');
     }
+
 
     setTarget(target) {
         this.targetPosition = target;
@@ -43,7 +44,6 @@ class GhostManager {
             const ghostData = {
                 model: ghostModel,
                 mixer: new THREE.AnimationMixer(ghostModel),
-                hasReachedTarget: false,
                 animations: gltf.animations,
                 hitCount: 0,
                 health: 100,
@@ -86,7 +86,7 @@ class GhostManager {
         if (!ghost.mixer || !ghost.animations || ghost.isDying) return;
 
         ghost.isHit = true;
-        ghost.health -= 34; // Decrease health by ~1/3
+        ghost.health -= 34;
 
         // Play hit sound
         this.hitSound.currentTime = 0;
@@ -94,34 +94,24 @@ class GhostManager {
 
         // Stop current animations and play hit animation
         ghost.mixer.stopAllAction();
-        const hitAction = ghost.mixer.clipAction(ghost.animations[0]);
+        const hitAction = ghost.mixer.clipAction(ghost.animations[4]);
+        console.log(ghost.animations);
         hitAction.setLoop(THREE.LoopOnce);
         hitAction.clampWhenFinished = true;
         hitAction.reset().play();
 
-        // Check if ghost should die
         if (ghost.health <= 0) {
             this.playDeathAnimation(ghost);
             return;
         }
 
-        // Resume normal behavior after hit animation
+        // Resume movement after hit animation
         setTimeout(() => {
             ghost.isHit = false;
-            const targetPos = this.getTargetPosition();
-            const distance = ghost.model.position.distanceTo(targetPos);
-            
             ghost.mixer.stopAllAction();
-            
-            if (distance > 5) {
-                ghost.hasReachedTarget = false;
-                const walkAction = ghost.mixer.clipAction(ghost.animations[5]);
-                walkAction.reset().play();
-            } else {
-                const idleAction = ghost.mixer.clipAction(ghost.animations[2]);
-                idleAction.reset().play();
-            }
-        }, 1000); // Adjust based on hit animation length
+            const walkAction = ghost.mixer.clipAction(ghost.animations[5]);
+            walkAction.reset().play();
+        }, 1000);
     }
 
     playDeathAnimation(ghost) {
@@ -135,18 +125,17 @@ class GhostManager {
 
         // Play death animation
         ghost.mixer.stopAllAction();
-        const deathAction = ghost.mixer.clipAction(ghost.animations[1]); // Assuming death is animation 1
+        const deathAction = ghost.mixer.clipAction(ghost.animations[1]);
         deathAction.setLoop(THREE.LoopOnce);
         deathAction.clampWhenFinished = true;
         deathAction.reset().play();
 
-        // Remove ghost after death animation
         setTimeout(() => {
             const index = this.ghosts.findIndex(g => g === ghost);
             if (index !== -1) {
                 this.removeGhost(index);
             }
-        }, 2000); // Adjust based on death animation length
+        }, 2000);
     }
 
     moveGhosts(delta) {
@@ -160,42 +149,36 @@ class GhostManager {
                 return;
             }
             
-            if (!ghost.hasReachedTarget) {
-                const ghostPosition = ghost.model.position;
-                const distance = ghostPosition.distanceTo(targetPos);
-                const reachThreshold = 5;
+            const ghostPosition = ghost.model.position;
+            const distance = ghostPosition.distanceTo(targetPos);
+            const speed = 0.03;
 
-                if (distance > reachThreshold) {
-                    // Calculate direction to target
-                    const direction = new THREE.Vector3()
-                        .subVectors(targetPos, ghostPosition)
-                        .normalize();
+            // Calculate direction to target
+            const direction = new THREE.Vector3()
+                .subVectors(targetPos, ghostPosition)
+                .normalize();
 
-                    // Move ghost
-                    const speed = 0.05;
-                    ghost.model.position.add(direction.multiplyScalar(speed));
-                    
-                    // Make ghost face movement direction
-                    ghost.model.lookAt(targetPos.x, ghostPosition.y, targetPos.z);
+            // Move ghost
+            ghost.model.position.add(direction.multiplyScalar(speed));
+            
+            // Make ghost face movement direction
+            ghost.model.lookAt(targetPos.x, ghostPosition.y, targetPos.z);
 
-                    // Update animation
-                    ghost.mixer.update(delta);
-                } else {
-                    // Ghost has reached target
-                    ghost.hasReachedTarget = true;
-                    ghost.mixer.stopAllAction();
-                    
-                    if (ghost.animations && ghost.animations.length > 0) {
-                        const idleAction = ghost.mixer.clipAction(ghost.animations[2]);
-                        idleAction.play();
-                    }
+            // Update animation
+            ghost.mixer.update(delta);
+
+            // Ensure walk animation is playing
+            if (ghost.animations && ghost.animations.length > 0) {
+                const walkAction = ghost.mixer.clipAction(ghost.animations[5]);
+                if (!walkAction.isRunning()) {
+                    walkAction.reset().play();
                 }
             }
         });
     }
 
     startSpawning(interval = 5000, maxGhosts = 10) {
-        this.stopSpawning(); // Clear any existing interval
+        this.stopSpawning();
         
         this.spawnInterval = setInterval(() => {
             if (this.ghosts.length < maxGhosts) {
@@ -230,12 +213,10 @@ class GhostManager {
         this.ghosts = [];
     }
 
-    // Utility method to get all active ghosts
     getActiveGhosts() {
         return this.ghosts.filter(ghost => !ghost.isDying);
     }
 
-    // Method to handle ghost hit detection
     handleBulletCollision(bullet, bulletIndex, bullets, scene) {
         for (let i = 0; i < this.ghosts.length; i++) {
             const ghost = this.ghosts[i];
@@ -251,10 +232,10 @@ class GhostManager {
 
                 // Handle ghost hit
                 this.playHitAnimation(ghost);
-                return true; // Collision detected
+                return true;
             }
         }
-        return false; // No collision
+        return false;
     }
 }
 
