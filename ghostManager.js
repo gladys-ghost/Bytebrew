@@ -167,7 +167,6 @@ class GhostManager {
             // Update animation
             ghost.mixer.update(delta);
 
-            // Ensure walk animation is playing
             if (ghost.animations && ghost.animations.length > 0) {
                 const walkAction = ghost.mixer.clipAction(ghost.animations[5]);
                 if (!walkAction.isRunning()) {
@@ -239,7 +238,6 @@ class GhostManager {
     }
 }
 
-// Export functions
 export function createGhostManager(scene) {
     return new GhostManager(scene);
 }

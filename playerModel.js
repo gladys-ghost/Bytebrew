@@ -18,7 +18,6 @@ healthDisplay.style.fontFamily = 'Arial, sans-serif';
 healthDisplay.style.borderRadius = '5px';
 document.body.appendChild(healthDisplay);
 
-// Health management functions
 function updateHealthDisplay() {
     healthDisplay.textContent = `Health: ${playerHealth}/${maxPlayerHealth}`;
     if (playerHealth < 25) {
@@ -662,9 +661,7 @@ function animate() {
   let isMoving = false;
 
 
-    
   
-  // Rotate target cube
   targetCube.rotation.y += 0.01;
   
   updateGhosts(ghostManager, delta);
