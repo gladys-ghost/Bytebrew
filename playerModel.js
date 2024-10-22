@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import Level1 from "./World/Level1";
 import Level2 from "./World/Level2";
+import { createGhostManager, updateGhosts } from './ghostManager';
+
 const audio = document.getElementById("myAudio");
 audio.volume = 0.05;
 
@@ -9,6 +11,7 @@ audio.volume = 0.05;
 const scene = new THREE.Scene();
 let level = new Level1(scene);
 let wallBoundingBoxes = level.getWallBoundingBoxes();
+const ghostManager = createGhostManager(scene);
 
 // === Camera Setup ===
 const camera = new THREE.PerspectiveCamera(
@@ -36,6 +39,13 @@ window.addEventListener("resize", () => {
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 
+
+const targetCube = new THREE.Mesh(
+  new THREE.BoxGeometry(5, 5, 5),
+  new THREE.MeshStandardMaterial({ color: 0xff0000 })
+);
+targetCube.position.set(0, 2.5, 0);
+
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(5, 10, 7.5);
 directionalLight.castShadow = true;
@@ -60,6 +70,8 @@ scene.add(ground);
 // === GLTF Loader ===
 const loader = new GLTFLoader();
 
+
+
 let mixer;
 let model;
 let walkAction;
@@ -67,7 +79,6 @@ let shootAction; // Will store the shooting animation
 let gunModel; // Will store the gun model
 let bulletModel;
 
-// === Clock for Animation Mixer ===
 const clock = new THREE.Clock();
 
 // === Movement Controls ===
@@ -235,6 +246,10 @@ loader.load(
 
     scene.add(model);
 
+    ghostManager.setTarget(model.position);
+ghostManager.startSpawning(5000, 10);
+
+
     mixer = new THREE.AnimationMixer(model);
 
     if (gltf.animations && gltf.animations.length) {
@@ -347,44 +362,66 @@ function loadBulletModel() {
 // === Update Bullet Positions ===
 function updateBullets(delta) {
   for (let i = bullets.length - 1; i >= 0; i--) {
-    const bullet = bullets[i];
-    bullet.position.add(bullet.userData.velocity.clone().multiplyScalar(delta));
+      const bullet = bullets[i];
+      bullet.position.add(bullet.userData.velocity.clone().multiplyScalar(delta));
 
-    // Remove bullet if it's too far away
-    if (bullet.position.length() > 100) {
-      scene.remove(bullet);
-      bullets.splice(i, 1);
-      continue;
-    }
-
-    // Check for collisions with objects
-    objects.forEach((obj, index) => {
-      const objBox = new THREE.Box3().setFromObject(obj); // Get the object's bounding box
-      const bulletBox = new THREE.Box3().setFromObject(bullet); // Get the bullet's bounding box
-
-      // Check if the object has been hit by the bullet
-      if (objBox.intersectsBox(bulletBox)) {
-        // Ensure the hit count is initialized for the object
-        if (!objectHitCount[obj.uuid]) {
-          objectHitCount[obj.uuid] = 0;
-        }
-
-        // Increment the object's hit count
-        objectHitCount[obj.uuid]++;
-        console.log(`Object hit! Total hits: ${objectHitCount[obj.uuid]}`);
-
-        // If the object has been hit at least twice, remove it from the scene
-        if (objectHitCount[obj.uuid] >= 2) {
-          scene.remove(obj); // Remove from the scene
-          objects.splice(index, 1); // Remove from the objects array
-          console.log("Object destroyed!");
-        }
-
-        // Remove the bullet after it hits an object
-        scene.remove(bullet); // Remove from the scene
-        bullets.splice(i, 1); // Remove from the bullets array
+      // Remove bullet if it's too far away
+      if (bullet.position.length() > 100) {
+          scene.remove(bullet);
+          bullets.splice(i, 1);
+          continue;
       }
-    });
+
+      // Check for collisions with objects
+      objects.forEach((obj, index) => {
+          const objBox = new THREE.Box3().setFromObject(obj);
+          const bulletBox = new THREE.Box3().setFromObject(bullet);
+
+          if (objBox.intersectsBox(bulletBox)) {
+              if (!objectHitCount[obj.uuid]) {
+                  objectHitCount[obj.uuid] = 0;
+              }
+              objectHitCount[obj.uuid]++;
+              
+              if (objectHitCount[obj.uuid] >= 2) {
+                  scene.remove(obj);
+                  objects.splice(index, 1);
+              }
+
+              scene.remove(bullet);
+              bullets.splice(i, 1);
+              return;
+          }
+      });
+
+      // Check for collisions with ghosts
+      ghostManager.ghosts.forEach((ghost, index) => {
+          if (!ghost.model) return;
+          
+          const ghostBox = new THREE.Box3().setFromObject(ghost.model);
+          const bulletBox = new THREE.Box3().setFromObject(bullet);
+
+          if (ghostBox.intersectsBox(bulletBox)) {
+              // Initialize hit count if it doesn't exist
+              if (!ghost.hitCount) {
+                  ghost.hitCount = 0;
+              }
+              ghost.hitCount++;
+
+              // Play hit animation
+              ghostManager.playHitAnimation(ghost);
+
+              // Remove ghost after certain number of hits (e.g., 3 hits)
+              if (ghost.hitCount >= 3) {
+                  ghostManager.removeGhost(index);
+              }
+
+              // Remove the bullet
+              scene.remove(bullet);
+              bullets.splice(i, 1);
+              return;
+          }
+      });
   }
 }
 function createBullet() {
@@ -501,6 +538,10 @@ function applyOptions() {
 
 // Call applyOptions when saving options
 saveOptionsButton.addEventListener("click", applyOptions);
+
+
+
+
 
 function checkAndResolveCollision(deltaX, deltaZ) {
   const originalPosition = new THREE.Vector3().copy(model.position);
@@ -621,6 +662,15 @@ function animate() {
   const rotateSpeed = Math.PI * delta;
 
   let isMoving = false;
+
+
+    
+  
+  // Rotate target cube
+  targetCube.rotation.y += 0.01;
+  
+  updateGhosts(ghostManager, delta);
+
 
   if (model) {
     let deltaX = 0;
