@@ -1,18 +1,14 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import listener from "./World/audioListener"
+import camera from "./camera"
 import Level1 from "./World/Level1"; // Assuming Level1 class handles wall creation
 
 // === Scene Setup ===
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000); // Dark background for a haunted feel
 
-// === Camera Setup ===
-const camera = new THREE.PerspectiveCamera(
-  75, // Field of view
-  window.innerWidth / window.innerHeight, // Aspect ratio
-  0.1, // Near clipping plane
-  1000 // Far clipping plane
-);
+
 const cameraOffset = new THREE.Vector3(0, 6, 1.5); // Offset for third-person view
 
 // === Renderer Setup ===
@@ -118,14 +114,13 @@ loader.load(
   (error) => console.error("An error occurred while loading the GLB model:", error)
 );
 
-// === Sound Effects ===
-const listener = new THREE.AudioListener();
+
 camera.add(listener);
 
 const sound = new THREE.Audio(listener);
 const audioLoader = new THREE.AudioLoader();
 
-audioLoader.load('./public/sounds/wind.mp3', (buffer) => {
+audioLoader.load('./public/sounds/creepy.mp3', (buffer) => {
   sound.setBuffer(buffer);
   sound.setLoop(true);
   sound.setVolume(0.5);
@@ -303,3 +298,4 @@ function animate() {
 }
 
 animate();
+export default {camera};
