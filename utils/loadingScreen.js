@@ -130,7 +130,7 @@ export class LoadingScreen {
                         dot.style.opacity = '1';
                     }, i * 150);
                 });
-            }, 100);
+            }, 1000);
         });
     }
     

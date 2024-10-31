@@ -7,28 +7,12 @@ import { createGhostManager, updateGhosts } from './ghostManager';
 import { HealthBar } from "./utils/health";
 import { AmmoDisplay } from "./utils/amo";
 import { LoadingScreen } from "./utils/loadingScreen";
+import { InventorySystem } from "./utils/inventorySystem";
 
 let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
 
-
-const loadingScreen = new LoadingScreen('Amazing Game', {
-  backgroundColor: '#1a1a1a',
-  titleColor: '#ffffff',
-  loadingColor: '#cccccc',
-  dotColors: ['#ff3366', '#33ff66', '#3366ff'],
-  fontSize: {
-      title: '64px',
-      loading: '32px'
-  }
-});
-
-// Show the loading screen
-loadingScreen.mount();
-
-// Update progress (optional)
-loadingScreen.setProgress(45);
 
 
 //add a health bar. 
@@ -42,6 +26,28 @@ const healthBar = new HealthBar(100, 100, {
       low: '#ff0000'
   }
 });
+
+const loadingScreen = new LoadingScreen('Amazing Game', {
+  backgroundColor: '#1a1a1a',
+  titleColor: '#ffffff',
+  loadingColor: '#cccccc',
+  dotColors: ['#ff3366', '#33ff66', '#3366ff'],
+  fontSize: {
+      title: '64px',
+      loading: '32px'
+  }
+});
+
+
+const inventory = new InventorySystem({
+  maxHealth: 100,
+  medkitHealAmount: 25,
+  initialMedkits: 3,
+  gunDamage: 20,
+  fireRate: 0.5
+});
+
+inventory.initializeUI();
 
 //add the bar to DOM
 
@@ -69,6 +75,7 @@ const ammoDisplay = new AmmoDisplay(30, 30, {
 // Mount it to the DOM
 ammoDisplay.mount();
 
+ammoDisplay.useAmmo(1);  // Fire one bullet
 ammoDisplay.useAmmo(5);  // Fire five bullets
 
 // Reload (returns a promise)
@@ -217,13 +224,14 @@ window.addEventListener("keyup", (event) => {
   }
 });
 
-
+// === Mouse Controls ===
 let mouseSensitivity = 0.002;
 let previousMouseX = window.innerWidth / 2; // Centered initially
 let previousMouseY = window.innerHeight / 2; // Centered initially
 let pitch = 0; // For up and down (vertical rotation)
 let maxPitch = Math.PI / 2; // 90 degrees limit for looking up or down
 
+// Request pointer lock for more natural first-person movement
 document.body.requestPointerLock = document.body.requestPointerLock || 
                                    document.body.mozRequestPointerLock || 
                                    document.body.webkitRequestPointerLock;
@@ -252,8 +260,6 @@ window.addEventListener('mousemove', (event) => {
 window.addEventListener('mousedown', (event) => {
   if (event.button === 0) { // Left mouse button
     triggerShooting();
-    ammoDisplay.useAmmo(1);  
-
   }
 });
 
@@ -308,6 +314,26 @@ function onShootAnimationFinished(event) {
       }
     }
   }
+}
+
+// === Game Objects Setup ===
+const objects = [];
+const objectHitCount = {};
+
+for (let i = 0; i < 3; i++) {
+  const geometry = new THREE.BoxGeometry(3, 3, 3);
+  const material = new THREE.MeshStandardMaterial({
+    color: Math.random() * 0xffffff,
+  });
+  const object = new THREE.Mesh(geometry, material);
+  object.position.set(i * 5 - 5, 0.5, -10);
+  object.castShadow = true;
+  object.receiveShadow = true;
+
+  objects.push(object);
+  objectHitCount[object.uuid] = 0; // Initialize hit count for each object
+  
+  scene.add(object);
 }
 
 // === Load Player Model ===
@@ -426,6 +452,7 @@ function loadBulletModel() {
   });
 }
 
+// === Update Bullets and Collisions ===
 function updateBullets(delta) {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const bullet = bullets[i];
@@ -501,7 +528,7 @@ function checkGhostCollisions() {
         let y = ghost.model.position.y*ghost.model.position.y  - model.position.y*model.position.y
         console.log(x*x+y*y<5)
         if (x*x+y*y<5) {
-          healthBar.damage(0.05);
+          healthBar.damage(0.1);
         }
     });
   }
@@ -512,6 +539,7 @@ function createBullet() {
     return;
   }
 
+  // Clone the bullet model to create a new instance for shooting
   const bullet = bulletModel.clone();
 
   // Get the gun's world position and apply it to the bullet
@@ -548,6 +576,7 @@ function createBullet() {
   bullets.push(bullet);
 }
 
+// === Menu Handling ===
 const startMenu = document.getElementById("startMenu");
 const optionsScreen = document.getElementById("optionsScreen");
 const creditsScreen = document.getElementById("creditsScreen");
@@ -729,9 +758,13 @@ function hidePopup() {
   const popup = document.getElementById("door-popup");
   popup.style.display = "none";
 }
-// === Animation Loop ===
+
+
 function animate() {
   requestAnimationFrame(animate);
+
+  if(model && gunModel && bulletModel){
+    loadingScreen.unmount();
 
   const delta = clock.getDelta();
 
@@ -816,6 +849,15 @@ function animate() {
   }
   updateBullets(delta);
   renderer.render(scene, camera);
+}else{
+
+if(gameStarted){
+  loadingScreen.mount();
+
+}
+
+
+}
 }
 
 export { animate, scene };
