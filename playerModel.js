@@ -13,7 +13,8 @@ let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
 
-
+const gameStates = ["loading", "playing", "gameover"];
+let initialGameState = gameStates[0]
 
 //add a health bar. 
 const healthBar = new HealthBar(100, 100, {
@@ -47,7 +48,7 @@ const inventory = new InventorySystem({
   fireRate: 0.5
 });
 
-inventory.initializeUI();
+//inventory.initializeUI();
 
 //add the bar to DOM
 
@@ -260,6 +261,7 @@ window.addEventListener('mousemove', (event) => {
 window.addEventListener('mousedown', (event) => {
   if (event.button === 0) { // Left mouse button
     triggerShooting();
+    AmmoDisplay.useAmmo();
   }
 });
 
@@ -290,6 +292,7 @@ function triggerShooting() {
 
   shootAction.reset();
   shootAction.play();
+//  AmmoDisplay.useAmmo();
   window.singletons.shootSound.playbackRate = 1;
   window.singletons.shootSound.play().then(() => {
     console.log("Sound is playing");
@@ -528,7 +531,12 @@ function checkGhostCollisions() {
         let y = ghost.model.position.y*ghost.model.position.y  - model.position.y*model.position.y
         console.log(x*x+y*y<5)
         if (x*x+y*y<5) {
-          healthBar.damage(0.1);
+       //   healthBar.damage(5.1);
+          inventory.takeDamage(0.1);
+          healthBar.setHealth(inventory.getHealth())
+
+          console.warn(inventory.getHealth());
+
         }
     });
   }
@@ -766,6 +774,8 @@ function animate() {
   if(model && gunModel && bulletModel){
     loadingScreen.unmount();
 
+
+    console.log(inventory.getHealth);
   const delta = clock.getDelta();
 
   checkGhostCollisions();

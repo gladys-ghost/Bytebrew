@@ -1,9 +1,7 @@
-// InventorySystem.js
-
 export class InventorySystem {
     constructor(options = {}) {
       this.config = {
-        maxHealth: options.maxHealth || 100,
+        maxHealth: options.maxHealth || 200,
         medkitHealAmount: options.medkitHealAmount || 25,
         initialMedkits: options.initialMedkits || 3,
         gunDamage: options.gunDamage || 20,

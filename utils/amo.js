@@ -28,7 +28,7 @@ export class AmmoDisplay {
         // Create main container
         this.container = document.createElement('div');
         this.container.style.position = 'fixed';
-        this.container.style.top = this.options.position.top;
+        this.container.style.bottom = this.options.position.top;
         this.container.style.left = this.options.position.left;
         this.container.style.padding = '10px';
         this.container.style.backgroundColor = this.options.backgroundColor;
