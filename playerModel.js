@@ -5,7 +5,7 @@ import Level1 from "./World/Level1";
 import Level2 from "./World/Level2";
 import { createGhostManager, updateGhosts } from './ghostManager';
 import { HealthBar } from "./utils/health";
-
+import { AmmoDisplay } from "./utils/amo";
 let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
@@ -32,9 +32,33 @@ healthBar.setHealth(100);
 
 // Custom game over handler
 healthBar.onGameOver = () => {
-    console.log('Custom game over behavior');
+  gameOver();
 };
 
+
+const ammoDisplay = new AmmoDisplay(30, 30, {
+  position: { top: '100px', left: '20px' },
+  reloadTime: 1500, // 1.5 seconds reload time
+  barColors: {
+      full: '#00ff00',
+      medium: '#ffff00',
+      low: '#ff0000',
+      reloading: '#0088ff'
+  }
+});
+
+// Mount it to the DOM
+ammoDisplay.mount();
+
+ammoDisplay.useAmmo(5);  // Fire five bullets
+
+// Reload (returns a promise)
+ammoDisplay.reload().then(() => {
+    console.log('Reload complete!');
+});
+
+// Set specific ammo amount
+ammoDisplay.setAmmo(15);
 
 function gameOver() {
     gameStarted = false;
@@ -210,6 +234,8 @@ window.addEventListener('mousemove', (event) => {
 window.addEventListener('mousedown', (event) => {
   if (event.button === 0) { // Left mouse button
     triggerShooting();
+    ammoDisplay.useAmmo(1);  
+
   }
 });
 
