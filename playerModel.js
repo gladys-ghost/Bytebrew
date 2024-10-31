@@ -4,47 +4,37 @@ import BossModel from "./bossModel";
 import Level1 from "./World/Level1";
 import Level2 from "./World/Level2";
 import { createGhostManager, updateGhosts } from './ghostManager';
-
+import { HealthBar } from "./utils/health";
 
 let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
 
-const healthDisplay = document.createElement('div');
-healthDisplay.style.position = 'fixed';
-healthDisplay.style.top = '20px';
-healthDisplay.style.left = '20px';
-healthDisplay.style.padding = '10px';
-healthDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-healthDisplay.style.color = 'white';
-healthDisplay.style.fontFamily = 'Arial, sans-serif';
-healthDisplay.style.borderRadius = '5px';
-document.body.appendChild(healthDisplay);
 
-function updateHealthDisplay() {
-    healthDisplay.textContent = `Health: ${playerHealth}/${maxPlayerHealth}`;
-    if (playerHealth < 25) {
-        healthDisplay.style.color = '#ff4444';
-    } else if (playerHealth < 50) {
-        healthDisplay.style.color = '#ffaa44';
-    } else {
-        healthDisplay.style.color = '#ffffff';
-    }
-}
 
-function addHealth(amount) {
-    playerHealth = Math.min(playerHealth + amount, maxPlayerHealth);
-    updateHealthDisplay();
-}
+//add a health bar. 
+const healthBar = new HealthBar(100, 100, {
+  position: { top: '50px', left: '50px' },
+  width: '300px',
+  barHeight: '25px',
+  barColors: {
+      high: '#00ff00',
+      medium: '#ffff00',
+      low: '#ff0000'
+  }
+});
 
-function damagePlayer(amount) {
-    playerHealth = Math.max(0, playerHealth - amount);
-    updateHealthDisplay();
-    
-    if (playerHealth <= 0) {
-        gameOver();
-    }
-}
+//add the bar to DOM
+
+healthBar.mount();
+
+healthBar.setHealth(100);
+
+// Custom game over handler
+healthBar.onGameOver = () => {
+    console.log('Custom game over behavior');
+};
+
 
 function gameOver() {
     gameStarted = false;
@@ -65,8 +55,27 @@ function gameOver() {
     document.body.appendChild(gameOverScreen);
 }
 
-// Initialize health display
-updateHealthDisplay();
+
+
+function Loading() {
+  gameStarted = false;
+  const loadingScreen = document.createElement('div');
+  loadingScreen.style.position = 'fixed';
+  loadingScreen.style.top = '50%';
+  loadingScreen.style.left = '50%';
+  loadingScreen.style.transform = 'translate(-50%, -50%)';
+  loadingScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+  loadingScreen.style.color = 'white';
+  loadingScreen.style.padding = '20px';
+  loadingScreen.style.textAlign = 'center';
+  loadingScreen.style.borderRadius = '10px';
+  loadingScreen.innerHTML = `
+      <h2>Loading...</h2>
+  `;
+  document.body.appendChild(loadingScreen);
+}
+
+
 
 const audio = document.getElementById("myAudio");
 audio.volume = 0.05;
@@ -465,11 +474,11 @@ function checkGhostCollisions() {
         console.log(ghost.model.position)
 
 
-        let x =  Math.abs(ghost.model.position.x  - model.position.x)
-        let y = Math.abs(ghost.model.position.y  - model.position.y)
-        console.log(x+y<5)
-        if (x+y<5) {
-            damagePlayer(0.05);
+        let x =  ghost.model.position.x*ghost.model.position.x  - model.position.x*model.position.x
+        let y = ghost.model.position.y*ghost.model.position.y  - model.position.y*model.position.y
+        console.log(x*x+y*y<5)
+        if (x*x+y*y<5) {
+          healthBar.damage(0.05);
         }
     });
   }
