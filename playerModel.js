@@ -6,10 +6,29 @@ import Level2 from "./World/Level2";
 import { createGhostManager, updateGhosts } from './ghostManager';
 import { HealthBar } from "./utils/health";
 import { AmmoDisplay } from "./utils/amo";
+import { LoadingScreen } from "./utils/loadingScreen";
+
 let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
 
+
+const loadingScreen = new LoadingScreen('Amazing Game', {
+  backgroundColor: '#1a1a1a',
+  titleColor: '#ffffff',
+  loadingColor: '#cccccc',
+  dotColors: ['#ff3366', '#33ff66', '#3366ff'],
+  fontSize: {
+      title: '64px',
+      loading: '32px'
+  }
+});
+
+// Show the loading screen
+loadingScreen.mount();
+
+// Update progress (optional)
+loadingScreen.setProgress(45);
 
 
 //add a health bar. 
@@ -198,14 +217,13 @@ window.addEventListener("keyup", (event) => {
   }
 });
 
-// === Mouse Controls ===
+
 let mouseSensitivity = 0.002;
 let previousMouseX = window.innerWidth / 2; // Centered initially
 let previousMouseY = window.innerHeight / 2; // Centered initially
 let pitch = 0; // For up and down (vertical rotation)
 let maxPitch = Math.PI / 2; // 90 degrees limit for looking up or down
 
-// Request pointer lock for more natural first-person movement
 document.body.requestPointerLock = document.body.requestPointerLock || 
                                    document.body.mozRequestPointerLock || 
                                    document.body.webkitRequestPointerLock;
@@ -290,26 +308,6 @@ function onShootAnimationFinished(event) {
       }
     }
   }
-}
-
-// === Game Objects Setup ===
-const objects = [];
-const objectHitCount = {};
-
-for (let i = 0; i < 3; i++) {
-  const geometry = new THREE.BoxGeometry(3, 3, 3);
-  const material = new THREE.MeshStandardMaterial({
-    color: Math.random() * 0xffffff,
-  });
-  const object = new THREE.Mesh(geometry, material);
-  object.position.set(i * 5 - 5, 0.5, -10);
-  object.castShadow = true;
-  object.receiveShadow = true;
-
-  objects.push(object);
-  objectHitCount[object.uuid] = 0; // Initialize hit count for each object
-  
-  scene.add(object);
 }
 
 // === Load Player Model ===
@@ -428,7 +426,6 @@ function loadBulletModel() {
   });
 }
 
-// === Update Bullets and Collisions ===
 function updateBullets(delta) {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const bullet = bullets[i];
@@ -515,7 +512,6 @@ function createBullet() {
     return;
   }
 
-  // Clone the bullet model to create a new instance for shooting
   const bullet = bulletModel.clone();
 
   // Get the gun's world position and apply it to the bullet
@@ -552,7 +548,6 @@ function createBullet() {
   bullets.push(bullet);
 }
 
-// === Menu Handling ===
 const startMenu = document.getElementById("startMenu");
 const optionsScreen = document.getElementById("optionsScreen");
 const creditsScreen = document.getElementById("creditsScreen");
