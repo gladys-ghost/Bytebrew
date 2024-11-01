@@ -42,7 +42,7 @@ const loadingScreen = new LoadingScreen('Amazing Game', {
 
 
 const killCounter = new KillCounterSystem({
-  totalEnemies: 10 // Optional, defaults to 10
+  totalEnemies: 3 // Optional, defaults to 10
 });
 
 
@@ -184,7 +184,7 @@ const targetCube = new THREE.Mesh(
 );
 targetCube.position.set(0, 2.5, 0);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+const directionalLight = new THREE.DirectionalLight(0xffff00, 0.2);
 directionalLight.position.set(5, 10, 7.5);
 directionalLight.castShadow = true;
 directionalLight.shadow.mapSize.width = 1024;
@@ -464,10 +464,10 @@ function addFlashlight(gunModel) {
   const flashlightGroup = new THREE.Group();
   
   // Create spotlight for flashlight effect
-  const flashlight = new THREE.SpotLight(0xffffff, 15); // Increased intensity
-  flashlight.angle = Math.PI / 8; // Narrower beam for better visibility
+  const flashlight = new THREE.SpotLight(0xffffff, 100); // Increased intensity
+  flashlight.angle = Math.PI / 12; // Narrower beam for better visibility
   flashlight.penumbra = 0.2;
-  flashlight.decay = 1;
+  flashlight.decay = 0.2;
   flashlight.distance = 100; // Increased range
   flashlight.castShadow = true;
 
@@ -475,7 +475,7 @@ function addFlashlight(gunModel) {
   flashlight.shadow.mapSize.width = 1024;
   flashlight.shadow.mapSize.height = 1024;
   flashlight.shadow.camera.near = 0.1;
-  flashlight.shadow.camera.far = 50;
+  flashlight.shadow.camera.far = 150;
   flashlight.shadow.focus = 1;
 
   // Create a visual representation of the flashlight lens
@@ -496,15 +496,14 @@ function addFlashlight(gunModel) {
   flashlight.position.copy(gunModel.position);
 
 
-  flashlightTarget.position.set(15, -5, 5);
+  flashlightTarget.position.set(15, -3, 0);
 
   // Add helper to visualize light direction (remove in production)
   const spotlightHelper = new THREE.SpotLightHelper(flashlight);
-  scene.add(spotlightHelper); // Add to scene for debugging
+//  scene.add(spotlightHelper); // Add to scene for debugging
 
   // Add everything to the flashlight group
   flashlightGroup.add(flashlight);
-  flashlightGroup.add(flashlightLens);
   flashlightGroup.add(flashlightTarget);
   
   // Add the group to the gun model
@@ -549,7 +548,7 @@ function addFlashlight(gunModel) {
       flashlightLens.material.emissiveIntensity = 0;
     } else {
       console.log('Turning flashlight on');
-      flashlight.intensity = 5;
+      flashlight.intensity = 10;
       flashlightLens.material.emissiveIntensity = 1;
     }
   };
