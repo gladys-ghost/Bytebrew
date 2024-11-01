@@ -279,7 +279,7 @@ loader.load(
     model = gltf.scene;
     model.scale.set(0.3, 0.3, 0.3);
     model.rotation.y = Math.PI;
-    model.position.set(0, 0, 0);
+    model.position.set(13, 0, -19.9);
 
     model.traverse((child) => {
       if (child.isMesh) {
@@ -457,6 +457,26 @@ function updateBullets(delta) {
         bullets.splice(i, 1);
       }
     });
+// === Red Flash Overlay Setup ===
+const hitFlash = document.createElement('div');
+hitFlash.style.position = 'fixed';
+hitFlash.style.top = '0';
+hitFlash.style.left = '0';
+hitFlash.style.width = '100vw';
+hitFlash.style.height = '100vh';
+hitFlash.style.backgroundColor = 'rgba(255, 0, 0, 0.5)'; // Red with transparency
+hitFlash.style.pointerEvents = 'none';
+hitFlash.style.opacity = '0'; // Start hidden
+hitFlash.style.transition = 'opacity 0.2s ease'; // Smooth fade out
+document.body.appendChild(hitFlash);
+
+// Function to trigger red flash
+function triggerHitFlash() {
+    hitFlash.style.opacity = '1'; // Show overlay
+    setTimeout(() => {
+        hitFlash.style.opacity = '0'; // Fade out after a short duration
+    }, 100); // 100ms duration for a quick flash
+}
 
     ghostManager.ghosts.forEach((ghost, index) => {
       if (!ghost.model) return;
@@ -469,6 +489,7 @@ function updateBullets(delta) {
           ghost.hitCount = 0;
         }
         ghost.hitCount++;
+        triggerHitFlash();
 
         ghostManager.playHitAnimation(ghost);
 
@@ -478,7 +499,9 @@ function updateBullets(delta) {
 
         scene.remove(bullet);
         bullets.splice(i, 1);
+        
       }
+      
     });
   }
 }
@@ -780,7 +803,8 @@ function animate() {
     checkPlayerDistance(model.position, new THREE.Vector3(-23.83, 1.6, -24.9));
 
     // Adjust the camera position and rotation to follow the player
-    const cameraOffset = new THREE.Vector3(0, 6, 1.5); // Adjust the offset as needed
+    const verticalOffset = Math.max(-0.4, Math.min(0.2, pitch * 2));
+    const cameraOffset = new THREE.Vector3(0, 6 + verticalOffset, 1.5);
     const cameraPosition = new THREE.Vector3()
       .copy(cameraOffset)
       .applyMatrix4(model.matrixWorld); // Move camera relative to player
@@ -788,9 +812,9 @@ function animate() {
     camera.position.copy(cameraPosition);
 
     // Make the camera look in the direction the player is facing
-    const lookDirection = new THREE.Vector3(
+      const lookDirection = new THREE.Vector3(
       Math.sin(model.rotation.y),
-      0,
+      Math.sin(pitch), // Adjust look direction with pitch
       Math.cos(model.rotation.y)
     ).normalize();
 
