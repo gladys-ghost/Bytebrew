@@ -11,6 +11,7 @@ import { InventorySystem } from "./utils/inventorySystem";
 import { KillCounterSystem } from "./utils/killCounter";
 import { FlickeringLightSystem } from "./utils/lights";
 import { createMedKitManager, updateMedKits } from "./utils/medkit";
+import { createArmorManager, updateArmorPickups } from "./utils/amobox";
 let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
@@ -88,7 +89,7 @@ healthBar.onGameOver = () => {
 
 const ammoDisplay = new AmmoDisplay(30, 30, {
   position: { top: '100px', left: '20px' },
-  reloadTime: 1500, // 1.5 seconds reload time
+  reloadTime: 1500, 
   barColors: {
       full: '#00ff00',
       medium: '#ffff00',
@@ -97,7 +98,6 @@ const ammoDisplay = new AmmoDisplay(30, 30, {
   }
 });
 
-// Mount it to the DOM
 ammoDisplay.mount();
 
 
@@ -221,6 +221,7 @@ let bulletModel;
 //===== Boss Model ===
 
 const medKitManager = createMedKitManager(scene);
+const armorManager = createArmorManager(scene);
 
 // Spawn a medkit at specific position
 
@@ -282,7 +283,6 @@ window.addEventListener('mousedown', (event) => {
       ammoDisplay.reload();
     }else{
       triggerShooting();
-      ammoDisplay.useAmmo();
     }
   
 
@@ -316,6 +316,8 @@ function triggerShooting() {
 
   shootAction.reset();
   shootAction.play();
+  ammoDisplay.useAmmo();
+
 //  AmmoDisplay.useAmmo();
   window.singletons.shootSound.playbackRate = 1;
   window.singletons.shootSound.play().then(() => {
@@ -360,7 +362,7 @@ for (let i = 0; i < 3; i++) {
   objects.push(object);
   objectHitCount[object.uuid] = 0; // Initialize hit count for each object
   
-  scene.add(object);
+  //scene.add(object);
 }
 
 // === Load Player Model ===
@@ -649,6 +651,7 @@ function updateBullets(delta) {
         //  console.log("the position is")
       //    console.log(ghost.position);
           medKitManager.createMedKit([ghost.model.position.x,1,ghost.model.position.z]);
+          armorManager.createArmorPickup([ghost.model.position.x+1,1,ghost.model.position.z+1])
           ghostManager.removeGhost(index);
           killCounter.incrementKills();
 
@@ -669,12 +672,10 @@ function checkGhostCollisions() {
     ghostManager.ghosts.forEach(ghost => {
         if (!ghost.model) return;
         
-        console.log(ghost.model.position)
 
 
         let x =  ghost.model.position.x*ghost.model.position.x  - model.position.x*model.position.x
         let y = ghost.model.position.y*ghost.model.position.y  - model.position.y*model.position.y
-        console.log(x*x+y*y<5)
         if (x*x+y*y<5) {
        //   healthBar.damage(5.1);
           inventory.takeDamage(0.1);
@@ -801,7 +802,31 @@ function applyOptions() {
 saveOptionsButton.addEventListener('click', applyOptions);
 
 
+function checkMedkitPickup() {
+  if (!model) return;
 
+  const playerBox = new THREE.Box3().setFromObject(model);
+
+  medKitManager.medkits.forEach((medkit, index) => {
+      const medkitBox = new THREE.Box3().setFromObject(medkit.model);
+
+      if (playerBox.intersectsBox(medkitBox)) {
+          // Check if the player's inventory has space for the medkit
+          if (1==1) {
+              // Add the medkit to the inventory
+
+              // Remove the medkit from the scene
+              scene.remove(medkit.model);
+              medKitManager.medkits.splice(index, 1);
+              healthBar.setHealth(100);
+
+              // Update the player's health
+             // inventory.heal(medkit.healAmount);
+         //     //healthBar.setHealth(inventory.getHealth());
+          }
+      }
+  });
+}
 
 
 function checkAndResolveCollision(deltaX, deltaZ) {
@@ -912,6 +937,10 @@ function hidePopup() {
   popup.style.display = "none";
 }
 
+function canTake(){
+  
+}
+
 
 function animate() {
   requestAnimationFrame(animate);
@@ -920,6 +949,7 @@ function animate() {
     loadingScreen.unmount();
     updateFlashlightHelper();
 
+    checkMedkitPickup();
 
     console.log(inventory.getHealth);
   const delta = clock.getDelta();
