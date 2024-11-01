@@ -599,40 +599,46 @@ function checkAndResolveCollision(deltaX, deltaZ) {
   const originalPosition = new THREE.Vector3().copy(model.position);
   let modelBoundingBox = new THREE.Box3().setFromObject(model);
 
+  // Test wall collisions
   let collidedX = false;
   let collidedZ = false;
 
-  // Attempt to move along the X-axis
+  // Move X
   model.position.x += deltaX;
   modelBoundingBox.setFromObject(model);
 
+  // Check walls
   for (const wallBoundingBox of wallBoundingBoxes) {
     if (modelBoundingBox.intersectsBox(wallBoundingBox)) {
       collidedX = true;
-      model.position.x = originalPosition.x; // Revert X movement on collision
+      model.position.x = originalPosition.x;
       break;
     }
   }
 
-  // Attempt to move along the Z-axis
+  // Check furniture collisions
+  if (level.getColliderSystem().checkCollision(model)) {
+    collidedX = true;
+    model.position.x = originalPosition.x;
+  }
+
+  // Move Z
   model.position.z += deltaZ;
   modelBoundingBox.setFromObject(model);
 
+  // Check walls
   for (const wallBoundingBox of wallBoundingBoxes) {
     if (modelBoundingBox.intersectsBox(wallBoundingBox)) {
       collidedZ = true;
-      model.position.z = originalPosition.z; // Revert Z movement on collision
+      model.position.z = originalPosition.z;
       break;
     }
   }
 
-  // If collision happens on X, allow sliding along Z
-  if (collidedX && !collidedZ) {
-    model.position.z = originalPosition.z + deltaZ;
-  }
-  // If collision happens on Z, allow sliding along X
-  if (collidedZ && !collidedX) {
-    model.position.x = originalPosition.x + deltaX;
+  // Check furniture collisions
+  if (level.getColliderSystem().checkCollision(model)) {
+    collidedZ = true;
+    model.position.z = originalPosition.z;
   }
 
   return { collidedX, collidedZ };

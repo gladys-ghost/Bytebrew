@@ -6,6 +6,7 @@ import camera from "../camera.js"
 import { cos } from "three/webgpu";
 import Ceiling from "./Ceiling.js";
 
+import Collider from './Collider.js';
 
 export default class Level1 {
   constructor(scene, player) {
@@ -583,6 +584,8 @@ const audioLoader = new THREE.AudioLoader();
     this.addBoundingBox(this.labWall3.mesh);
 
     this.scene.add(this.labGroup);
+
+    this.colliderSystem = new Collider();
   }
 
   // Helper method to create and store bounding boxes for each wall
@@ -590,10 +593,12 @@ const audioLoader = new THREE.AudioLoader();
     const boundingBox = new THREE.Box3().setFromObject(mesh);
     this.wallBoundingBoxes.push(boundingBox);
   }
+
   getWallBoundingBoxes() {
     return this.wallBoundingBoxes;
   }
-  setMonstersDead(){
+
+  setMonstersDead() {
     this.monstersDead = true;
   }
 
@@ -611,4 +616,8 @@ const audioLoader = new THREE.AudioLoader();
 
   // === Ceiling Setup ===
 
+
+  getColliderSystem() {
+    return this.colliderSystem;
+  }
 }
