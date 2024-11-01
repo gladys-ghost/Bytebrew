@@ -94,7 +94,7 @@ window.addEventListener("resize", () => {
 
 // === Lighting Setup ===
 // const ambientLight = new THREE.AmbientLight(0xffffff, 0.01);
-const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
 scene.add(ambientLight);
 const targetCube = new THREE.Mesh(
   new THREE.BoxGeometry(5, 5, 5),
