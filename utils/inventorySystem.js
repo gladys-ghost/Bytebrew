@@ -37,7 +37,7 @@ export class InventorySystem {
       const container = document.createElement('div');
       Object.assign(container.style, {
         position: 'fixed',
-        bottom: '30px',
+        bottom: '20px',
         right: '20px',
         padding: '15px',
         background: 'rgba(0, 0, 0, 0.7)',

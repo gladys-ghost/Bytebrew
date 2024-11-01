@@ -55,6 +55,15 @@
     <button id="startButton">Start</button>
     <button id="optionsButton">Options</button>
     <button id="creditsButton">Credits</button>
+    <button id="controls">Controls</button>
+
+    <script>
+      document.getElementById("controls").onclick = function() {
+        // Redirect to controls.html in the same folder
+        window.location.href = "./controls.html";
+      };
+    </script>
+
   </div>
 
   <div id="optionsScreen" class="menu-overlay" style="display: none;">

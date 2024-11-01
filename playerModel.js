@@ -18,7 +18,6 @@ let animationFrameId = null;
 
 
 
-
 let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
@@ -888,7 +887,6 @@ function checkPlayerDistance(player, door) {
         }, 3000);
 
       } else {
-        // If monsters are still present, show a message to the player
         popup = document.getElementById("door-popup");
         popup.style.display = "block";
         popup.innerHTML = "Defeat all Monsters to open the door";
