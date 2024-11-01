@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import Wall from "./Wall.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import Collider from './Collider.js';
 
 
 export default class Level1 {
@@ -175,6 +176,15 @@ export default class Level1 {
     this.addBoundingBox(this.labWall3.mesh);
 
     this.scene.add(this.labGroup);
+
+    this.colliderSystem = new Collider();
+
+    gltfLoader.load('/path/to/furniture.glb', (gltf) => {
+      const furniture = gltf.scene;
+      // ... other furniture setup code ...
+      
+      this.colliderSystem.addCollider(furniture);
+    });
   }
 
   // Helper method to create and store bounding boxes for each wall
@@ -194,5 +204,9 @@ export default class Level1 {
     this.scene.remove(this.anotherRoomGroup);
     this.scene.remove(this.enemyRoomGroup);
     this.scene.remove(this.bedroomGroup);
+  }
+
+  getColliderSystem() {
+    return this.colliderSystem;
   }
 }
