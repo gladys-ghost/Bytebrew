@@ -54,7 +54,14 @@
     <button id="startButton">Start</button>
     <button id="optionsButton">Options</button>
     <button id="creditsButton">Credits</button>
+    <button id="controls">Controls</button>
   </div>
+
+  <script>
+    document.getElementById('controls').addEventListener('click', ()=>{
+      window.location.href = "./controls.html"
+    })
+  </script>
 
   <div id="optionsScreen" class="menu-overlay" style="display: none;">
     <h1>Options</h1>

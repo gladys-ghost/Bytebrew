@@ -16,6 +16,16 @@ let kills = 0;
 
 let animationFrameId = null;
 
+function pauseAnimation() {
+  cancelAnimationFrame(animationFrameId); // Stop the animation
+
+  setTimeout(() => {
+    startAnimation(); // Restart the animation
+  }, 20000);
+}
+
+pauseAnimation();
+
 
 
 let gameStarted = false;
@@ -46,6 +56,9 @@ const loadingScreen = new LoadingScreen('Amazing Game', {
       loading: '32px'
   }
 });
+
+
+loadingScreen.mount();
 
 
 const killCounter = new KillCounterSystem({
@@ -664,13 +677,19 @@ function checkGhostCollisions() {
 
 
         let x =  ghost.model.position.x*ghost.model.position.x  - model.position.x*model.position.x
-        let y = ghost.model.position.y*ghost.model.position.y  - model.position.y*model.position.y
-        if (x*x+y*y<5) {
+        let z = ghost.model.position.z*ghost.model.position.z  - model.position.z*model.position.z
+        if (x*x+z*z<=10) {
        //   healthBar.damage(5.1);
           inventory.takeDamage(0.1);
           healthBar.setHealth(inventory.getHealth())
 
-          console.warn(inventory.getHealth());
+          if(healthBar.getHealth() == 0){
+
+            gameOver();
+            pauseAnimation();
+
+
+          }
 
         }
     });
