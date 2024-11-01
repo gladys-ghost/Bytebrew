@@ -841,7 +841,7 @@ function checkPlayerDistance(player, door) {
 
     if (keysPressed["e"]) {
       // Check if all enemies are defeated
-      if (objects.length === 0) {
+      if (killCounter.getKillCount === 3) {
         // Display a loading screen while transitioning to Level 2
         showLoadingScreen();
 
