@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Instructions</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #e0e0e0;
+            line-height: 1.6;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .instructions-container {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+        .instruction-section {
+            margin-bottom: 20px;
+        }
+        .instruction-section h2 {
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            color: white;
+        }
+        .instruction-text {
+            margin-bottom: 15px;
+        }
+        .key {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-right: 10px;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions-container">
+        <h1>Game Instructions</h1>
+        
+        <div class="instruction-section">
+            <h2>Objective</h2>
+            <p class="instruction-text">Your goal is to eliminate a specified number of enemies in each level. Survive and progress through increasingly challenging stages.</p>
+        </div>
+        
+        <div class="instruction-section">
+            <h2>Game Mechanics</h2>
+            <p class="instruction-text">- Kill the required number of enemies to unlock the next level's door.</p>
+            <p class="instruction-text">- If you die, you must restart the level from the beginning.</p>
+            <p class="instruction-text">- Each level increases in difficulty with more enemies to defeat.</p>
+        </div>
+        
+        <div class="instruction-section">
+            <h2>Combat and Survival</h2>
+            <p class="instruction-text">
+                <span class="key">R</span> Reload your weapon
+            </p>
+            <p class="instruction-text">
+                <span class="key">2</span> Switch to Medkit
+            </p>
+            <p class="instruction-text">
+                <span class="key">E</span> Use Medkit to heal
+            </p>
+        </div>
+        
+        <div class="instruction-section">
+            <h2>Progression</h2>
+            <p class="instruction-text">Successfully eliminate all required enemies to unlock the door to the next level. Be strategic, stay alert, and survive!</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -21,7 +21,7 @@ function pauseAnimation() {
 
   setTimeout(() => {
     startAnimation(); // Restart the animation
-  }, 20000);
+  }, 25000);
 }
 
 pauseAnimation();
@@ -684,7 +684,6 @@ function checkGhostCollisions() {
           healthBar.setHealth(inventory.getHealth())
 
           if(healthBar.getHealth() == 0){
-
             gameOver();
             pauseAnimation();
 
@@ -1196,7 +1195,6 @@ class CameraToggle {
           ? 'Third Person Mode' 
           : 'First Person Mode';
       
-      // Optional: Add transition or visual feedback
       this.container.style.backgroundColor = 'rgba(0, 100, 255, 0.7)';
       setTimeout(() => {
           this.container.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
