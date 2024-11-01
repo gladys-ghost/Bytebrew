@@ -46,7 +46,6 @@ export class KillCounterSystem {
             gap: '8px'
         });
 
-        // Add skull emoji icon
         const icon = document.createElement('span');
         icon.textContent = '💀';
         Object.assign(icon.style, {

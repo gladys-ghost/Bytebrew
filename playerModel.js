@@ -12,6 +12,8 @@ import { KillCounterSystem } from "./utils/killCounter";
 import { FlickeringLightSystem } from "./utils/lights";
 import { createMedKitManager, updateMedKits } from "./utils/medkit";
 import { createArmorManager, updateArmorPickups } from "./utils/amobox";
+let kills = 0;
+
 let animationFrameId = null;
 
 
@@ -245,13 +247,10 @@ window.addEventListener("keyup", (event) => {
     keysPressed[event.key.toLowerCase()] = false;
   }
 });
-
 // === Mouse Controls ===
-let mouseSensitivity = 0.002;
-let previousMouseX = window.innerWidth / 2; // Centered initially
-let previousMouseY = window.innerHeight / 2; // Centered initially
-let pitch = 0; // For up and down (vertical rotation)
-let maxPitch = Math.PI / 2; // 90 degrees limit for looking up or down
+let mouseSensitivity = 0.002; // Sensitivity for mouse movement
+let pitch = 0; // Vertical rotation (up and down)
+const maxPitch = Math.PI / 2; // Maximum pitch limit (90 degrees)
 
 // Request pointer lock for more natural first-person movement
 document.body.requestPointerLock = document.body.requestPointerLock || 
@@ -259,24 +258,36 @@ document.body.requestPointerLock = document.body.requestPointerLock ||
                                    document.body.webkitRequestPointerLock;
 
 document.body.onclick = () => {
-  document.body.requestPointerLock();
+  document.body.requestPointerLock(); // Request pointer lock on click
 };
 
 window.addEventListener('mousemove', (event) => {
-  // If pointer lock is active, use movementX and movementY for relative movement
+  // Calculate mouse movement
   const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
   const deltaY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
 
   if (model) {
-    model.rotation.y -= deltaX * mouseSensitivity;
-    pitch -= deltaY * mouseSensitivity;
-    pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
-    camera.rotation.x = pitch;
-  }
+    // Rotate model based on mouse movement
+    model.rotation.y -= deltaX * mouseSensitivity; // Yaw (left/right)
+    pitch -= deltaY * mouseSensitivity; // Pitch (up/down)
 
-  previousMouseX += deltaX;
-  previousMouseY += deltaY;
+    // Clamp the pitch to prevent flipping
+    pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
+    camera.rotation.x = pitch; // Apply pitch to the camera
+  }
 });
+
+// Optionally handle pointer lock change events for better UX
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === document.body) {
+    // Pointer lock is active
+    console.log('Pointer lock activated');
+  } else {
+    // Pointer lock is not active
+    console.log('Pointer lock deactivated');
+  }
+});
+
 
 // === Shooting Input ===
 window.addEventListener('mousedown', (event) => {
@@ -632,6 +643,7 @@ function updateBullets(delta) {
           armorManager.createArmorPickup([ghost.model.position.x+1,1,ghost.model.position.z+1])
           ghostManager.removeGhost(index);
           killCounter.incrementKills();
+          kills += 1;
 
         }
 
@@ -853,6 +865,7 @@ let popup;
 function checkPlayerDistance(player, door) {
   const distance = player.distanceTo(door);
   const interactionDistance = 3.0; // Adjust this value as needed
+  console.log(killCounter.getKillCount);
 
   // If the player is within the interaction range
   if (distance <= interactionDistance) {
@@ -860,7 +873,7 @@ function checkPlayerDistance(player, door) {
 
     if (keysPressed["e"]) {
       // Check if all enemies are defeated
-      if (killCounter.getKillCount === 3) {
+      if (kills >= 3) {
         // Display a loading screen while transitioning to Level 2
         showLoadingScreen();
 
