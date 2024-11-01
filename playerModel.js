@@ -10,6 +10,7 @@ import { LoadingScreen } from "./utils/loadingScreen";
 import { InventorySystem } from "./utils/inventorySystem";
 import { KillCounterSystem } from "./utils/killCounter";
 import { FlickeringLightSystem } from "./utils/lights";
+import { createMedKitManager, updateMedKits } from "./utils/medkit";
 let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
@@ -119,6 +120,8 @@ function gameOver() {
     `;
     document.body.appendChild(gameOverScreen);
 }
+// Create manager
+
 
 
 
@@ -217,6 +220,11 @@ let bulletModel;
 
 //===== Boss Model ===
 
+const medKitManager = createMedKitManager(scene);
+
+// Spawn a medkit at specific position
+
+// Or spawn at random position
 
 const clock = new THREE.Clock();
 
@@ -270,8 +278,13 @@ window.addEventListener('mousemove', (event) => {
 // === Shooting Input ===
 window.addEventListener('mousedown', (event) => {
   if (event.button === 0) { // Left mouse button
-    triggerShooting();
-    ammoDisplay.useAmmo();
+    if(ammoDisplay.currentAmmo == 0){
+      ammoDisplay.reload();
+    }else{
+      triggerShooting();
+      ammoDisplay.useAmmo();
+    }
+  
 
   }
 });
@@ -633,6 +646,9 @@ function updateBullets(delta) {
         ghostManager.playHitAnimation(ghost);
 
         if (ghost.hitCount >= 2) {
+        //  console.log("the position is")
+      //    console.log(ghost.position);
+          medKitManager.createMedKit([ghost.model.position.x,1,ghost.model.position.z]);
           ghostManager.removeGhost(index);
           killCounter.incrementKills();
 
