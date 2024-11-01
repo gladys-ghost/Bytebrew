@@ -219,11 +219,83 @@ function checkAndResolveCollision(deltaX, deltaZ) {
 }
 
 // In your animate function, add:
-function animate() {
-  // ... existing code ...
+function gameLoop() {
+  requestAnimationFrame(gameLoop);
+
+  const delta = clock.getDelta();
+
+  checkGhostCollisions();
+  if (mixer) mixer.update(delta);
+
+  const walkSpeed = 5 * delta;
+  const rotateSpeed = Math.PI * delta;
+
+  let isMoving = false;
+
+  targetCube.rotation.y += 0.01;
   
+  updateGhosts(ghostManager, delta);
   updateBulletTrails();
   level.getColliderSystem().updateColliders();
+
+  if (model) {
+    let deltaX = 0;
+    let deltaZ = 0;
+
+    if (keysPressed["w"] || keysPressed["arrowup"]) {
+      deltaZ = walkSpeed * Math.cos(model.rotation.y);
+      deltaX = walkSpeed * Math.sin(model.rotation.y);
+      isMoving = true;
+    }
+    if (keysPressed["s"] || keysPressed["arrowdown"]) {
+      deltaZ = -walkSpeed * Math.cos(model.rotation.y);
+      deltaX = -walkSpeed * Math.sin(model.rotation.y);
+      isMoving = true;
+    }
+
+    // Resolve collisions
+    const { collidedX, collidedZ } = checkAndResolveCollision(deltaX, deltaZ);
+
+    if (keysPressed["a"] || keysPressed["arrowleft"]) {
+      model.rotation.y += rotateSpeed;
+    }
+    if (keysPressed["d"] || keysPressed["arrowright"]) {
+      model.rotation.y -= rotateSpeed;
+    }
+
+    checkPlayerDistance(model.position, new THREE.Vector3(-23.83, 1.6, -24.9));
+
+    // Adjust the camera position and rotation to follow the player
+    const cameraOffset = new THREE.Vector3(0, 6, 1.5);
+    const cameraPosition = new THREE.Vector3()
+      .copy(cameraOffset)
+      .applyMatrix4(model.matrixWorld);
+
+    camera.position.copy(cameraPosition);
+
+    const lookDirection = new THREE.Vector3(
+      Math.sin(model.rotation.y),
+      0,
+      Math.cos(model.rotation.y)
+    ).normalize();
+
+    const cameraLookAt = new THREE.Vector3()
+      .copy(model.position)
+      .add(lookDirection);
+    camera.lookAt(cameraLookAt.x, model.position.y + 1.5, cameraLookAt.z);
+  }
+
+  // Handle animation state for walk
+  if (walkAction) {
+    if (isMoving) {
+      if (walkAction.paused) walkAction.paused = false;
+    } else {
+      if (!walkAction.paused) walkAction.paused = true;
+    }
+  }
   
-  // ... rest of animate function ...
+  renderer.render(scene, camera);
 }
+
+// Start the game loop
+gameLoop();
