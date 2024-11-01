@@ -8,7 +8,8 @@ import { HealthBar } from "./utils/health";
 import { AmmoDisplay } from "./utils/amo";
 import { LoadingScreen } from "./utils/loadingScreen";
 import { InventorySystem } from "./utils/inventorySystem";
-
+import { KillCounterSystem } from "./utils/killCounter";
+import { FlickeringLightSystem } from "./utils/lights";
 let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
@@ -40,6 +41,11 @@ const loadingScreen = new LoadingScreen('Amazing Game', {
 });
 
 
+const killCounter = new KillCounterSystem({
+  totalEnemies: 10 // Optional, defaults to 10
+});
+
+
 const inventory = new InventorySystem({
   maxHealth: 100,
   medkitHealAmount: 25,
@@ -48,9 +54,26 @@ const inventory = new InventorySystem({
   fireRate: 0.5
 });
 
-//inventory.initializeUI();
+inventory.initializeUI();
 
-//add the bar to DOM
+
+// Create with default settings
+const flickeringLights = new FlickeringLightSystem();
+
+// Or customize the effect
+const customLights = new FlickeringLightSystem({
+    intensity: 0.7,         // How strong the effect is (0-1)
+    flickerSpeed: 1.5,      // How fast it flickers
+    minOpacity: 0.1,        // Minimum opacity of the red overlay
+    maxOpacity: 0.3         // Maximum opacity of the red overlay
+});
+
+// You can control the effect:
+flickeringLights.setIntensity(0.8);     // Change intensity
+flickeringLights.setFlickerSpeed(2);     // Change speed
+flickeringLights.stop();                 // Stop the effect
+flickeringLights.start();                // Resume the effect
+flickeringLights.destroy();              // Remove completely
 
 healthBar.mount();
 
@@ -76,16 +99,7 @@ const ammoDisplay = new AmmoDisplay(30, 30, {
 // Mount it to the DOM
 ammoDisplay.mount();
 
-ammoDisplay.useAmmo(1);  // Fire one bullet
-ammoDisplay.useAmmo(5);  // Fire five bullets
 
-// Reload (returns a promise)
-ammoDisplay.reload().then(() => {
-    console.log('Reload complete!');
-});
-
-// Set specific ammo amount
-ammoDisplay.setAmmo(15);
 
 function gameOver() {
     gameStarted = false;
@@ -161,8 +175,8 @@ window.addEventListener("resize", () => {
 
 
 // === Lighting Setup ===
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
+const ambientLight = new THREE.AmbientLight(0xf00000, 0.1);
+//scene.add(ambientLight);
 
 const targetCube = new THREE.Mesh(
   new THREE.BoxGeometry(5, 5, 5),
@@ -170,7 +184,7 @@ const targetCube = new THREE.Mesh(
 );
 targetCube.position.set(0, 2.5, 0);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
 directionalLight.position.set(5, 10, 7.5);
 directionalLight.castShadow = true;
 directionalLight.shadow.mapSize.width = 1024;
@@ -180,7 +194,7 @@ directionalLight.shadow.camera.far = 50;
 
 scene.add(directionalLight);
 
-// === Ground Plane ===
+//
 const groundGeometry = new THREE.PlaneGeometry(50, 50);
 const groundMaterial = new THREE.MeshStandardMaterial({
   color: 0x808080,
@@ -202,11 +216,7 @@ let gunModel;
 let bulletModel;
 
 //===== Boss Model ===
-const bossModel = new BossModel(scene);
-bossModel.loadModel().then(() => {
-  bossModel.playAnimation("Idle");
-  bossModel.model.position.set(0, 0, -10);
-});
+
 
 const clock = new THREE.Clock();
 
@@ -261,7 +271,8 @@ window.addEventListener('mousemove', (event) => {
 window.addEventListener('mousedown', (event) => {
   if (event.button === 0) { // Left mouse button
     triggerShooting();
-    AmmoDisplay.useAmmo();
+    ammoDisplay.useAmmo();
+
   }
 });
 
@@ -397,40 +408,41 @@ loader.load(
   }
 );
 
-// === Load Gun and Bullet Models ===
 function loadGun() {
   loader.load(
-    './public/gun.glb', // Path to the gun model
+    './public/gun.glb',
     function (gltf) {
       gunModel = gltf.scene;
       gunModel.scale.set(3.5, 3.5, 3.5);
 
+      // Log the gun model structure to help with positioning
+      console.log('Gun model structure:', gunModel);
+
       model.traverse((child) => {
         if (child.isBone) {
-          console.log('Bone:', child.name); // Logs the bone name
+          console.log('Bone:', child.name);
         } else if (child.isMesh) {
-          console.log('Mesh:', child.name); // Logs mesh names
+          console.log('Mesh:', child.name);
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
 
-      // Attach the gun to the player's hand (assuming the hand bone is known or manually positioning it)
-      // Replace 'mixamorigRightHand' with the correct bone name if different
-      const handBone = model.getObjectByName('mixamorigRightHand'); // Replace with actual bone name if different
+      // Add flashlight before attaching to hand
+      const flashlightSystem = addFlashlight(gunModel);
+
+      const handBone = model.getObjectByName('mixamorigRightHand');
       if (handBone) {
         handBone.add(gunModel);
         gunModel.position.set(0.1, 0.6, 0.35);
         const lookDirection = new THREE.Vector3(
-          Math.sin(model.rotation.y), // Forward direction in X
-          0,                          // No vertical rotation
-          Math.cos(model.rotation.y)   // Forward direction in Z
+          Math.sin(model.rotation.y),
+          0,
+          Math.cos(model.rotation.y)
         ).normalize();
         const gunRotation = new THREE.Quaternion();
-  
-        // Set the rotation of the gun to point in the look direction
-        gunRotation.setFromUnitVectors(new THREE.Vector3(-4.5, 5,-0.4), lookDirection); // Assuming gun's forward is in the -Z direction
-        gunModel.quaternion.copy(gunRotation); // Apply the calculated rotation to the gun
+        gunRotation.setFromUnitVectors(new THREE.Vector3(-4.5, 5, -0.4), lookDirection);
+        gunModel.quaternion.copy(gunRotation);
         console.log("Gun attached to player's hand");
       } else {
         gunModel.position.set(0.5, 1.2, 0.3);
@@ -443,9 +455,125 @@ function loadGun() {
     },
     function (error) {
       console.error('An error occurred while loading the gun model:', error);
-
     }
   );
+}
+
+function addFlashlight(gunModel) {
+  // Create a group to hold all flashlight components
+  const flashlightGroup = new THREE.Group();
+  
+  // Create spotlight for flashlight effect
+  const flashlight = new THREE.SpotLight(0xffffff, 15); // Increased intensity
+  flashlight.angle = Math.PI / 8; // Narrower beam for better visibility
+  flashlight.penumbra = 0.2;
+  flashlight.decay = 1;
+  flashlight.distance = 100; // Increased range
+  flashlight.castShadow = true;
+
+  // Configure shadow properties
+  flashlight.shadow.mapSize.width = 1024;
+  flashlight.shadow.mapSize.height = 1024;
+  flashlight.shadow.camera.near = 0.1;
+  flashlight.shadow.camera.far = 50;
+  flashlight.shadow.focus = 1;
+
+  // Create a visual representation of the flashlight lens
+  const flashlightLens = new THREE.Mesh(
+    new THREE.CircleGeometry(0.03, 16),
+    new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 1
+    })
+  );
+
+  // Create a target for the spotlight
+  const flashlightTarget = new THREE.Object3D();
+  
+  // Position components properly
+  // Adjust these values based on your gun model
+  flashlight.position.copy(gunModel.position);
+
+
+  flashlightTarget.position.set(15, -5, 5);
+
+  // Add helper to visualize light direction (remove in production)
+  const spotlightHelper = new THREE.SpotLightHelper(flashlight);
+  scene.add(spotlightHelper); // Add to scene for debugging
+
+  // Add everything to the flashlight group
+  flashlightGroup.add(flashlight);
+  flashlightGroup.add(flashlightLens);
+  flashlightGroup.add(flashlightTarget);
+  
+  // Add the group to the gun model
+  gunModel.add(flashlightGroup);
+  flashlight.target = flashlightTarget;
+
+  // Store references
+  gunModel.userData.flashlight = flashlight;
+  gunModel.userData.flashlightLens = flashlightLens;
+  gunModel.userData.flashlightTarget = flashlightTarget;
+  gunModel.userData.flashlightHelper = spotlightHelper;
+
+  // Update helper in animation loop
+  function updateHelper() {
+    if (spotlightHelper) {
+      spotlightHelper.update();
+    }
+    requestAnimationFrame(updateHelper);
+  }
+  updateHelper();
+
+  // Add subtle flicker effect
+  function updateFlashlight() {
+    if (flashlight.intensity > 0) {
+      const baseIntensity = 5;
+      const flicker = Math.random() * 0.2 - 0.1;
+      flashlight.intensity = baseIntensity + flicker;
+      flashlightLens.material.emissiveIntensity = 0.8 + flicker;
+    }
+    requestAnimationFrame(updateFlashlight);
+  }
+  updateFlashlight();
+
+  // Toggle function with debug logging
+  gunModel.userData.toggleFlashlight = function() {
+    console.log('Toggling flashlight');
+    const isOn = flashlight.intensity > 0;
+    
+    if (isOn) {
+      console.log('Turning flashlight off');
+      flashlight.intensity = 0;
+      flashlightLens.material.emissiveIntensity = 0;
+    } else {
+      console.log('Turning flashlight on');
+      flashlight.intensity = 5;
+      flashlightLens.material.emissiveIntensity = 1;
+    }
+  };
+
+  // Add toggle key listener
+  document.addEventListener('keydown', (event) => {
+    if (event.key.toLowerCase() === 'f') {
+      console.log('F key pressed');
+      gunModel.userData.toggleFlashlight();
+    }
+  });
+
+  // Make sure scene has proper rendering settings
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  return flashlightGroup;
+}
+
+// Add this to your animation loop
+function updateFlashlightHelper() {
+  if (gunModel && gunModel.userData.flashlightHelper) {
+    gunModel.userData.flashlightHelper.update();
+  }
 }
 
 function loadBulletModel() {
@@ -507,6 +635,8 @@ function updateBullets(delta) {
 
         if (ghost.hitCount >= 2) {
           ghostManager.removeGhost(index);
+          killCounter.incrementKills();
+
         }
 
         scene.remove(bullet);
@@ -773,6 +903,7 @@ function animate() {
 
   if(model && gunModel && bulletModel){
     loadingScreen.unmount();
+    updateFlashlightHelper();
 
 
     console.log(inventory.getHealth);
@@ -781,12 +912,7 @@ function animate() {
   checkGhostCollisions();
   if (mixer) mixer.update(delta);
 
-  if (bossModel.model) {
-    bossModel.update(delta);
-    if(gameStarted){
-      bossModel.moveTowardsTarget(model);
-    }
-  }
+
   const walkSpeed = 5 * delta;
   const rotateSpeed = Math.PI * delta;
 
@@ -830,6 +956,9 @@ function animate() {
 
     // Adjust the camera position and rotation to follow the player
     const cameraOffset = new THREE.Vector3(0, 6, 1.5); // Adjust the offset as needed
+    //third person
+   // const cameraOffset = new THREE.Vector3(1, 8, -4.5); // Adjust the offset as needed
+
     const cameraPosition = new THREE.Vector3()
       .copy(cameraOffset)
       .applyMatrix4(model.matrixWorld); // Move camera relative to player

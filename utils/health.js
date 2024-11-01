@@ -67,7 +67,7 @@ export class HealthBar {
     }
     
     updateDisplay() {
-        const healthPercentage = (this.currentHealth / this.maxHealth) * 100;
+        const healthPercentage = Math.floor ((this.currentHealth / this.maxHealth) * 100);
         this.healthText.textContent = `Health: ${this.currentHealth}/${this.maxHealth}`;
         this.progressBar.style.width = `${healthPercentage}%`;
         
