@@ -98,6 +98,10 @@ export class HealthBar {
         this.currentHealth = Math.max(0, Math.min(amount, this.maxHealth));
         this.updateDisplay();
     }
+
+    getHealth(){
+        return this.currentHealth;
+    }
     
     onGameOver() {
         console.log('Game Over!');
