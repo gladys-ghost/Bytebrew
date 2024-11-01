@@ -6,48 +6,61 @@ export default class Wall {
     this.wallWidth = 0.2;
     this.wallDepth = size;
 
-    this.loader = new THREE.TextureLoader();
+    const textureLoader = new THREE.TextureLoader();
 
-    // Load all textures
-    this.texture = this.loader.load("/wall-textures/concrete_wall_003_diff_1k.jpg", (texture) => {
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(3, 1);  // Adjust repeat values as needed
-    });
-
-    this.roughnessTexture = this.loader.load("/wall-textures/concrete_wall_003_rough_1k.jpg", (texture) => {
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(5, 5);  // Repeat to cover the wall
-    });
-
-    this.normalTexture = this.loader.load("/wall-textures/concrete_wall_003_nor_gl_1k.exr", (texture) => {
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(5, 5);  // Repeat to cover the wall
-    });
-
-    // Create the geometry
-    this.geometry = new THREE.BoxGeometry(this.wallWidth, this.wallHeight, this.wallDepth);
-
-    // Create the material and assign all the textures
+    // Create the material
     this.material = new THREE.MeshStandardMaterial({
-      map: this.texture,             // Base color texture
-      roughnessMap: this.roughnessTexture,  // Roughness texture for surface detail
-      normalMap: this.normalTexture,  // Normal texture for 
       roughness: 0.5,
+      color: 0xffffff,
+      metalness: 0.1,
+      displacementScale: 0, 
+      side: THREE.DoubleSide,
     });
-    
-    
-    // Create the mesh and position it
+
+    // Load and configure each texture
+    textureLoader.load("/cracked_concrete_wall_1k.blend/textures/cracked_concrete_wall_diff_1k.jpg", (map) => {
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(size / 5, 1);
+      map.anisotropy = 2;
+      map.colorSpace = THREE.SRGBColorSpace;
+      this.material.map = map;
+      this.material.needsUpdate = true;
+    });
+
+    textureLoader.load("/cracked_concrete_wall_1k.blend/textures/cracked_concrete_wall_rough_1k.jpg", (map) => {
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(size / 5, 1);
+      map.anisotropy = 2;
+      this.material.roughnessMap = map;
+      this.material.needsUpdate = true;
+    });
+
+    textureLoader.load("/cracked_concrete_wall_1k.blend/textures/cracked_concrete_wall_nor_gl_1k.exr", (map) => {
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(size / 5, 1);
+      map.anisotropy = 2;
+      this.material.normalMap = map;
+      this.material.needsUpdate = true;
+    });
+
+    textureLoader.load("/cracked_concrete_wall_1k.blend/textures/cracked_concrete_wall_disp_1k.png", (map) => {
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(size / 5, 1);
+      map.anisotropy = 2;
+      this.material.displacementMap = map;
+      this.material.needsUpdate = true;
+    });
+
+    // Create the wall geometry and mesh
+    this.geometry = new THREE.BoxGeometry(this.wallWidth, this.wallHeight, this.wallDepth);
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.rotation.y = rotation;
-    this.boundingBox = new THREE.Box3().setFromObject(this.mesh);
     this.mesh.receiveShadow = true;
-    this.mesh.position.set(x , y + this.wallHeight / 2, z);
+    this.mesh.castShadow = true;
+    this.mesh.position.set(x, y + this.wallHeight / 2, z);
   }
+
   updateBoundingBox() {
     this.boundingBox.setFromObject(this.mesh);
   }
 }
-

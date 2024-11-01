@@ -3,7 +3,7 @@ import Wall from "./Wall.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 
-export default class Level1 {
+export default class Level2 {
   constructor(scene, player) {
     this.scene = scene;
     this.player = player;

@@ -6,7 +6,7 @@ import { createGhostManager, updateGhosts } from './ghostManager';
 import listener from "./World/audioListener"
 import camera from "./camera"
 
-let playerHealth = 100;
+let playerHealth = 10000000000000;
 const maxPlayerHealth = 100;
 
 const healthDisplay = document.createElement('div');
@@ -73,6 +73,7 @@ audio.volume = 0.05;
 // === Scene Setup ===
 const scene = new THREE.Scene();
 let level = new Level1(scene);
+
 let wallBoundingBoxes = level.getWallBoundingBoxes();
 const ghostManager = createGhostManager(scene);
 
@@ -80,6 +81,7 @@ const ghostManager = createGhostManager(scene);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ReinhardToneMapping;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
@@ -91,22 +93,23 @@ window.addEventListener("resize", () => {
 });
 
 // === Lighting Setup ===
-const ambientLight = new THREE.AmbientLight(0x444466, 0.5);
+// const ambientLight = new THREE.AmbientLight(0xffffff, 0.01);
+const ambientLight = new THREE.AmbientLight(0xffffff, 1);
 scene.add(ambientLight);
 const targetCube = new THREE.Mesh(
   new THREE.BoxGeometry(5, 5, 5),
   new THREE.MeshStandardMaterial({ color: 0xff0000 })
 );
 targetCube.position.set(0, 2.5, 0);
-const ghostLight = new THREE.SpotLight(0xaaaaee, 1.0, 100, Math.PI / 8, 0.5, 1);
-ghostLight.position.set(5, 20, 5);
-ghostLight.castShadow = true;
-scene.add(ghostLight);
+// const ghostLight = new THREE.SpotLight(0xaaaaee, 1.0, 100, Math.PI / 8, 0.5, 1);
+// ghostLight.position.set(5, 20, 5);
+// ghostLight.castShadow = true;
+// scene.add(ghostLight);
 
-const directionalLight = new THREE.DirectionalLight(0x666666, 0.3);
-directionalLight.position.set(0, 20, 0);
-directionalLight.castShadow = true;
-scene.add(directionalLight);
+// const directionalLight = new THREE.DirectionalLight(0x666666, 1);
+// directionalLight.position.set(0, 20, 0);
+// directionalLight.castShadow = true;
+// scene.add(directionalLight);
 
 // === Ceiling Setup ===
 function createCeiling(width, height, depth, texture) {
@@ -120,32 +123,10 @@ function createCeiling(width, height, depth, texture) {
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = height; // Set ceiling at the same height as the walls
   ceiling.receiveShadow = true;
+  ceiling.castShadow = true;
   scene.add(ceiling);
 }
-// === Ground Plane ===
-const groundGeometry = new THREE.PlaneGeometry(50, 50);
-const loaderGround = new THREE.TextureLoader();
 
-const baseColorTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_basecolor.png');
-const normalTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_normal.png');
-const roughnessTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_roughness.png');
-
-[baseColorTexture, normalTexture, roughnessTexture].forEach((texture) => {
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(20, 20);
-});
-
-const groundMaterial = new THREE.MeshStandardMaterial({
-  map: baseColorTexture,
-  normalMap: normalTexture,
-  roughnessMap: roughnessTexture,
-});
-
-const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
 
 // === GLTF Loader ===
 const loader = new GLTFLoader();
@@ -289,6 +270,7 @@ loader.load(
     });
 
     scene.add(model);
+    level.setPlayer(model);
 
     ghostManager.setTarget(model.position);
     ghostManager.startSpawning(5000, 5);
@@ -336,50 +318,18 @@ audioLoader.load('./public/sounds/creepy.mp3', (buffer) => {
   sound.play();
 });
 
-createCeiling(50, 5, 50, baseColorTexture); // Adjust dimensions as per the building
+// createCeiling(50, 5, 50, baseColorTexture); // Adjust dimensions as per the building
 
-// Add ceiling lights
-function createCeilingLight(x, y, z, flickering=false) {
-  const light = new THREE.PointLight(0xffffff, 10.5, 1000); // Increased intensity
-  light.position.set(x, y, z);
-  scene.add(light);
+// // Add ceiling lights
 
-  // Create a small sphere to represent the light bulb
-  const lightBulbGeometry = new THREE.SphereGeometry(0.6);
-  const lightBulbMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-  const lightBulb = new THREE.Mesh(lightBulbGeometry, lightBulbMaterial);
-  lightBulb.position.copy(light.position);
-  scene.add(lightBulb);
 
-    // Flickering effect
-    if (flickering) {
-      const flickerClock = new THREE.Clock();
-      const flickerSpeed = 10; // Adjust the flickering speed
-      const intensityRange = 20; // Adjust the intensity range
-  
-      function flickerLight() {
-        const elapsedTime = flickerClock.getElapsedTime();
-        const intensity = Math.sin(elapsedTime * flickerSpeed) * intensityRange + 10.5;
-        light.intensity = intensity;
-      }
-  
-      // Update the flickering effect in the animation loop
-      const updateFlicker = () => {
-        flickerLight();
-        requestAnimationFrame(updateFlicker);
-      };
-  
-      updateFlicker();
-    }
-}
-
-// Create multiple ceiling lights
-createCeilingLight(15, 5, 10,true);
-createCeilingLight(-13, 5, 12);
-createCeilingLight(-20, 5, 20);
-createCeilingLight(-5, 5, -5);
-createCeilingLight(20, 5, -15,true);
-createCeilingLight(13, 5, -10);
+// // Create multiple ceiling lights
+// createCeilingLight(15, 5, 10,true);
+// createCeilingLight(-13, 5, 12);
+// createCeilingLight(-20, 5, 20);
+// createCeilingLight(-5, 5, -5);
+// createCeilingLight(20, 5, -15,true);
+// createCeilingLight(13, 5, -10);
 // === Sliding Collision Detection ===
 
 function loadGun() {
@@ -491,12 +441,12 @@ function checkGhostCollisions() {
     ghostManager.ghosts.forEach(ghost => {
         if (!ghost.model) return;
         
-        console.log(ghost.model.position)
+        // console.log(ghost.model.position)
 
 
         let x =  Math.abs(ghost.model.position.x  - model.position.x)
         let y = Math.abs(ghost.model.position.y  - model.position.y)
-        console.log(x+y<5)
+        // console.log(x+y<5)
         if (x+y<5) {
             damagePlayer(0.05);
         }
@@ -786,6 +736,7 @@ function animate() {
       .applyMatrix4(model.matrixWorld); // Move camera relative to player
 
     camera.position.copy(cameraPosition);
+    camera.rotateY(new THREE.Euler(0, model.rotation.y, 0, "YXZ"));
 
     // Make the camera look in the direction the player is facing
     const lookDirection = new THREE.Vector3(

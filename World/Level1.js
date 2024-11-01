@@ -4,6 +4,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import listener from "./audioListener.js";
 import camera from "../camera.js"
 import { cos } from "three/webgpu";
+import Ceiling from "./Ceiling.js";
 
 
 export default class Level1 {
@@ -12,6 +13,7 @@ export default class Level1 {
     this.player = player;
     this.offset = new Wall(0, 0, 0, 0, 0).wallWidth / 2;
     this.objects = [];
+
 
     // Array to store bounding boxes for all walls
     this.wallBoundingBoxes = [];
@@ -24,10 +26,6 @@ export default class Level1 {
     let doorType = this.monstersDead ? "unlocked.glb" : "scene.gltf";
 
 
-    // this.player.position.set(-23.83, 1.6, -24.9);
-    console.log("Player:::: ",this.player);
-
-
     gltfLoader.load(
       `/science_lab_door_-_apocalyptic/${doorType}`,
       (gltf) => {
@@ -35,6 +33,7 @@ export default class Level1 {
         console.log(doorModel);
         doorModel.scale.set(2, 1.5, 1);
         doorModel.position.set(-23.83, 1.6, -24.9);
+        this.addBoundingBox(doorModel);
         this.scene.add(doorModel);
       },
       undefined,
@@ -50,6 +49,7 @@ export default class Level1 {
         console.log(tv);
         tv.scale.set(2, 1.5, 1);
         tv.position.set(-8.83, 0, 0.8);
+        this.addBoundingBox(tv);
         this.scene.add(tv);
       },
       undefined,
@@ -64,6 +64,7 @@ export default class Level1 {
         console.log(sofa);
         sofa.scale.set(0.03, 0.03, 0.03);
         sofa.position.set(-3.83, 0, 0.8);
+        this.addBoundingBox(sofa);
         this.scene.add(sofa);
       },
       undefined,
@@ -77,8 +78,10 @@ export default class Level1 {
       
       cab = gltf.scene;
         console.log(cab);
-        cab.scale.set(2, 1.5, 1);
-        cab.position.set(-4.83, 0, -15.8);
+        cab.scale.set(1, 0.5, 1);
+        cab.position.set(-12, 0, 16);
+        cab.rotation.y = -Math.PI/12;
+        this.addBoundingBox(cab);
         this.scene.add(cab);
       },
       undefined,
@@ -126,11 +129,11 @@ export default class Level1 {
     this.addBoundingBox(this.bedroomWall1.mesh);
 
     this.bedroomWall2 = new Wall(
-      -16.5 + this.offset - slightOffset,
+      -16 + this.offset - slightOffset,
       0,
       15 + this.offset - slightOffset,
       Math.PI / 2,
-      13
+      12
     );
     this.bedroomGroup.add(this.bedroomWall2.mesh);
     this.addBoundingBox(this.bedroomWall2.mesh);
@@ -208,6 +211,17 @@ export default class Level1 {
         console.error("Error loading the GLTF model:", error);
       }
     );
+
+    // Ceiling
+
+    this.ceiling = new Ceiling(this.scene, 50, new Wall().wallHeight, 50);
+    this.ceiling.createCeilingLight( 17.5, new Wall().wallHeight - 0.2, 20, true);
+    this.ceiling.createCeilingLight( 5, new Wall().wallHeight - 0.2, 20, true);
+    this.ceiling.createCeilingLight( 24, new Wall().wallHeight - 0.2, -20, false);
+
+
+
+
     let standModel;
     gltfLoader.load(
       "/night-stand/old_bed.glb",
@@ -215,7 +229,7 @@ export default class Level1 {
         standModel = gltf.scene;
         console.log(standModel);
         standModel.scale.set(2, 1.5, 1);
-        standModel.position.set(4.2, 0, 19.95);
+        standModel.position.set(4.2, 100, 19.95);
         this.enemyRoomGroup.add(standModel);
       },
       undefined,
@@ -398,6 +412,7 @@ const audioLoader = new THREE.AudioLoader();
         console.log(standModel1);
         standModel1.scale.set(2, 1.5, 1);
         standModel1.position.set(18.2, 0.5, -15);
+        this.addBoundingBox(standModel1);
         this.enemyRoomGroup.add(standModel1);
       },
       undefined,
@@ -476,6 +491,7 @@ const audioLoader = new THREE.AudioLoader();
         console.log(standModel1);
         standModel1.scale.set(2, 1.5, 1);
         standModel1.position.set(18.2, 0.5, -2);
+        this.addBoundingBox(standModel1);
         this.enemyRoomGroup.add(standModel1);
       },
       undefined,
@@ -587,4 +603,12 @@ const audioLoader = new THREE.AudioLoader();
     this.scene.remove(this.enemyRoomGroup);
     this.scene.remove(this.bedroomGroup);
   }
+
+  setPlayer(player){
+    this.player = player;
+    this.player.position.set(-20, 0, 20);
+  }
+
+  // === Ceiling Setup ===
+
 }
