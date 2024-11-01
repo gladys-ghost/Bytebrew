@@ -179,7 +179,7 @@ export class KillCounterSystem {
         `;
         document.head.appendChild(style);
 
-        victory.textContent = '🏆 Victory! All Enemies Defeated! 🏆';
+        victory.textContent = '🏆 Victory! All Enemies Defeated! 🏆, You can now opem the door';
         document.body.appendChild(victory);
 
         // Remove after 3 seconds
