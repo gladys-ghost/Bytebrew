@@ -12,6 +12,11 @@ import { KillCounterSystem } from "./utils/killCounter";
 import { FlickeringLightSystem } from "./utils/lights";
 import { createMedKitManager, updateMedKits } from "./utils/medkit";
 import { createArmorManager, updateArmorPickups } from "./utils/amobox";
+let animationFrameId = null;
+
+
+
+
 let gameStarted = false;
 let playerHealth = 100;
 const maxPlayerHealth = 100;
@@ -19,7 +24,6 @@ const maxPlayerHealth = 100;
 const gameStates = ["loading", "playing", "gameover"];
 let initialGameState = gameStates[0]
 
-//add a health bar. 
 const healthBar = new HealthBar(100, 100, {
   position: { top: '50px', left: '50px' },
   width: '300px',
@@ -44,7 +48,7 @@ const loadingScreen = new LoadingScreen('Amazing Game', {
 
 
 const killCounter = new KillCounterSystem({
-  totalEnemies: 3 // Optional, defaults to 10
+  totalEnemies: 3 
 });
 
 
@@ -59,10 +63,8 @@ const inventory = new InventorySystem({
 inventory.initializeUI();
 
 
-// Create with default settings
 const flickeringLights = new FlickeringLightSystem();
 
-// Or customize the effect
 const customLights = new FlickeringLightSystem({
     intensity: 0.7,         // How strong the effect is (0-1)
     flickerSpeed: 1.5,      // How fast it flickers
@@ -593,7 +595,7 @@ function updateFlashlightHelper() {
 function loadBulletModel() {
   loader.load("./public/bullet.glb", (gltf) => {
     bulletModel = gltf.scene;
-    bulletModel.scale.set(0.05, 0.05, 0.05);
+    bulletModel.scale.set(0.01, 0.01, 0.01);
   });
 }
 
@@ -601,7 +603,7 @@ function loadBulletModel() {
 function updateBullets(delta) {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const bullet = bullets[i];
-    bullet.position.add(bullet.userData.velocity.clone().multiplyScalar(delta));
+    bullet.position.add(bullet.userData.velocity.clone().multiplyScalar(delta*1.4));
 
     if (bullet.position.length() > 100) {
       scene.remove(bullet);
@@ -609,29 +611,6 @@ function updateBullets(delta) {
       continue;
     }
 
-    // Check for collisions with objects
-    objects.forEach((obj) => {
-      const objBox = new THREE.Box3().setFromObject(obj); // Get the object's bounding box
-      const bulletBox = new THREE.Box3().setFromObject(bullet); // Get the bullet's bounding box
-      
-      if (objBox.intersectsBox(bulletBox)) {
-        if (!objectHitCount[obj.uuid]) {
-          objectHitCount[obj.uuid] = 0;
-        }
-        objectHitCount[obj.uuid]++;
-        
-        console.log(`Object hit! Total hits: ${objectHitCount[obj.uuid]}`);
-
-        // If the object has been hit twice, remove it
-        if (objectHitCount[obj.uuid] >= 2) {
-          scene.remove(obj);
-          console.log("Object destroyed!");
-        }
-
-        scene.remove(bullet);
-        bullets.splice(i, 1);
-      }
-    });
 
     ghostManager.ghosts.forEach((ghost, index) => {
       if (!ghost.model) return;
@@ -648,8 +627,7 @@ function updateBullets(delta) {
         ghostManager.playHitAnimation(ghost);
 
         if (ghost.hitCount >= 2) {
-        //  console.log("the position is")
-      //    console.log(ghost.position);
+
           medKitManager.createMedKit([ghost.model.position.x,1,ghost.model.position.z]);
           armorManager.createArmorPickup([ghost.model.position.x+1,1,ghost.model.position.z+1])
           ghostManager.removeGhost(index);
@@ -942,106 +920,273 @@ function canTake(){
 }
 
 
+function startAnimation() {
+  animationFrameId = requestAnimationFrame(animate);
+}
+
+// Function to stop the animation
+
+
+
+
 function animate() {
-  requestAnimationFrame(animate);
+//  requestAnimationFrame(animate);
+
+animationFrameId = requestAnimationFrame(animate);
+
+
 
   if(model && gunModel && bulletModel){
     loadingScreen.unmount();
     updateFlashlightHelper();
-
     checkMedkitPickup();
 
-    console.log(inventory.getHealth);
-  const delta = clock.getDelta();
+    const delta = clock.getDelta();
 
-  checkGhostCollisions();
-  if (mixer) mixer.update(delta);
+    checkGhostCollisions();
+    if (mixer) mixer.update(delta);
 
+    const walkSpeed = 5 * delta;
+    const rotateSpeed = Math.PI * delta;
 
-  const walkSpeed = 5 * delta;
-  const rotateSpeed = Math.PI * delta;
+    let isMoving = false;
+    
+    targetCube.rotation.y += 0.01;
+    
+    updateGhosts(ghostManager, delta);
 
-  let isMoving = false;
+    if (model) {
+      let deltaX = 0;
+      let deltaZ = 0;
 
+      if (keysPressed["w"] || keysPressed["arrowup"]) {
+        deltaZ = walkSpeed * Math.cos(model.rotation.y);
+        deltaX = walkSpeed * Math.sin(model.rotation.y);
+        isMoving = true;
+      }
+      if (keysPressed["s"] || keysPressed["arrowdown"]) {
+        deltaZ = -walkSpeed * Math.cos(model.rotation.y);
+        deltaX = -walkSpeed * Math.sin(model.rotation.y);
+        isMoving = true;
+      }
 
-  
-  targetCube.rotation.y += 0.01;
-  
-  updateGhosts(ghostManager, delta);
+      // Resolve collisions
+      const { collidedX, collidedZ } = checkAndResolveCollision(deltaX, deltaZ);
 
+      if (keysPressed["a"] || keysPressed["arrowleft"]) {
+        model.rotation.y += rotateSpeed;
+      }
+      if (keysPressed["d"] || keysPressed["arrowright"]) {
+        model.rotation.y -= rotateSpeed;
+      }
 
-  if (model) {
-    let deltaX = 0;
-    let deltaZ = 0;
+      checkPlayerDistance(model.position, new THREE.Vector3(-23.83, 1.6, -24.9));
 
-    if (keysPressed["w"] || keysPressed["arrowup"]) {
-      deltaZ = walkSpeed * Math.cos(model.rotation.y);
-      deltaX = walkSpeed * Math.sin(model.rotation.y);
-      isMoving = true;
+      // Handle camera based on view mode
+      if (isThirdPerson) {
+        // Third person camera setup
+        const cameraOffset = new THREE.Vector3(0, 3, -8);
+        const smoothness = 0.1;
+
+        // Calculate desired camera position
+        const desiredPosition = new THREE.Vector3()
+          .copy(model.position)
+          .add(cameraOffset.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), model.rotation.y));
+
+        // Smoothly interpolate current camera position to desired position
+        camera.position.lerp(desiredPosition, smoothness);
+
+        // Make camera look at player's head level
+        const lookAtPosition = new THREE.Vector3()
+          .copy(model.position)
+          .add(new THREE.Vector3(0, 2, 0));
+
+        camera.lookAt(lookAtPosition);
+      } else {
+        // First person camera (original code)
+        const cameraOffset = new THREE.Vector3(0, 6, 1.5);
+        const cameraPosition = new THREE.Vector3()
+          .copy(cameraOffset)
+          .applyMatrix4(model.matrixWorld);
+
+        camera.position.copy(cameraPosition);
+
+        const lookDirection = new THREE.Vector3(
+          Math.sin(model.rotation.y),
+          0,
+          Math.cos(model.rotation.y)
+        ).normalize();
+
+        const cameraLookAt = new THREE.Vector3()
+          .copy(model.position)
+          .add(lookDirection);
+        camera.lookAt(cameraLookAt.x, model.position.y + 1.5, cameraLookAt.z);
+      }
     }
-    if (keysPressed["s"] || keysPressed["arrowdown"]) {
-      deltaZ = -walkSpeed * Math.cos(model.rotation.y);
-      deltaX = -walkSpeed * Math.sin(model.rotation.y);
-      isMoving = true;
+
+    // Handle animation state for walk
+    if (walkAction) {
+      if (isMoving) {
+        if (walkAction.paused) walkAction.paused = false;
+      } else {
+        if (!walkAction.paused) walkAction.paused = true;
+      }
     }
-
-    // Resolve collisions
-    const { collidedX, collidedZ } = checkAndResolveCollision(deltaX, deltaZ);
-
-    if (keysPressed["a"] || keysPressed["arrowleft"]) {
-      model.rotation.y += rotateSpeed;
+    updateBullets(delta);
+    renderer.render(scene, camera);
+  } else {
+    if(gameStarted) {
+      loadingScreen.mount();
     }
-    if (keysPressed["d"] || keysPressed["arrowright"]) {
-      model.rotation.y -= rotateSpeed;
+  }
+}
+
+
+// HTML structure for the mode preview
+const modePreview = document.createElement('div');
+modePreview.style.position = 'fixed';
+modePreview.style.bottom = '20px';
+modePreview.style.right = '20px';
+modePreview.style.padding = '10px 20px';
+modePreview.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+modePreview.style.color = 'white';
+modePreview.style.borderRadius = '5px';
+modePreview.style.fontFamily = 'Arial, sans-serif';
+modePreview.style.zIndex = '1000';
+document.body.appendChild(modePreview);
+
+// Keep track of the current mode and keys pressed
+let isThirdPerson = false;
+
+// Update the mode preview text
+function updateModePreview() {
+    const currentMode = isThirdPerson ? 'Third Person' : 'First Person';
+    
+}
+
+// Initialize the preview
+updateModePreview();
+
+// Event listener for keydown
+document.addEventListener('keydown', (event) => {
+    const key = event.key.toLowerCase();
+    keysPressed[key] = true;
+    
+    // Toggle camera view when 'c' is pressed
+    if (key === 'c') {
+        isThirdPerson = !isThirdPerson;
+        updateModePreview();
+    
     }
+    if(key === 'r'){
+      ammoDisplay.reload();
 
-    // if closer to the door then can click e to open and a popup that says click e to open door will showup on the screen
+    }
+});
 
-    checkPlayerDistance(model.position, new THREE.Vector3(-23.83, 1.6, -24.9));
+// Event listener for keyup
+document.addEventListener('keyup', (event) => {
+    const key = event.key.toLowerCase();
+    delete keysPressed[key];
+});
 
-    // Adjust the camera position and rotation to follow the player
-    const cameraOffset = new THREE.Vector3(0, 6, 1.5); // Adjust the offset as needed
-    //third person
-   // const cameraOffset = new THREE.Vector3(1, 8, -4.5); // Adjust the offset as needed
 
-    const cameraPosition = new THREE.Vector3()
-      .copy(cameraOffset)
-      .applyMatrix4(model.matrixWorld); // Move camera relative to player
 
-    camera.position.copy(cameraPosition);
-
-    // Make the camera look in the direction the player is facing
-    const lookDirection = new THREE.Vector3(
-      Math.sin(model.rotation.y),
-      0,
-      Math.cos(model.rotation.y)
-    ).normalize();
-
-    const cameraLookAt = new THREE.Vector3()
-      .copy(model.position)
-      .add(lookDirection);
-    camera.lookAt(cameraLookAt.x, model.position.y + 1.5, cameraLookAt.z); // Adjust the Y axis for smoother camera angle
+// Camera mode toggle with SVG icon
+class CameraToggle {
+  constructor() {
+      this.isThirdPerson = false;
+      this.createToggleElement();
+      this.addEventListeners();
   }
 
-  // Handle animation state for walk
-  if (walkAction) {
-    if (isMoving) {
-      if (walkAction.paused) walkAction.paused = false;
-    } else {
-      if (!walkAction.paused) walkAction.paused = true;
-    }
+  createToggleElement() {
+      // Create container div
+      this.container = document.createElement('div');
+      this.container.style.cssText = `
+          position: fixed;
+          bottom: 0px;
+          right: 20px;
+          display: flex;
+          align-items: center;
+          background-color: rgba(0, 0, 0, 0.7);
+          color: white;
+          padding: 10px;
+          border-radius: 8px;
+          cursor: pointer;
+          user-select: none;
+          font-family: Arial, sans-serif;
+          z-index: 1000;
+      `;
+
+      // Create SVG icon
+      this.iconSvg = this.createCameraIcon();
+      this.container.appendChild(this.iconSvg);
+
+      // Create text element
+      this.modeText = document.createElement('span');
+      this.modeText.style.marginLeft = '10px';
+      this.container.appendChild(this.modeText);
+
+      // Initial update
+      this.updateMode();
+
+      // Add to document
+      document.body.appendChild(this.container);
   }
-  updateBullets(delta);
-  renderer.render(scene, camera);
-}else{
 
-if(gameStarted){
-  loadingScreen.mount();
+  createCameraIcon() {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '24');
+      svg.setAttribute('height', '24');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'white');
+      svg.setAttribute('stroke-width', '2');
+      svg.setAttribute('stroke-linecap', 'round');
+      svg.setAttribute('stroke-linejoin', 'round');
 
+      // Camera body path
+      const bodyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      bodyPath.setAttribute('d', 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z');
+      svg.appendChild(bodyPath);
+
+      // Camera lens path
+      const lensPath = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      lensPath.setAttribute('cx', '12');
+      lensPath.setAttribute('cy', '13');
+      lensPath.setAttribute('r', '3');
+      svg.appendChild(lensPath);
+
+      return svg;
+  }
+
+  updateMode() {
+      this.modeText.textContent = this.isThirdPerson 
+          ? 'Third Person Mode' 
+          : 'First Person Mode';
+      
+      // Optional: Add transition or visual feedback
+      this.container.style.backgroundColor = 'rgba(0, 100, 255, 0.7)';
+      setTimeout(() => {
+          this.container.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+      }, 200);
+  }
+
+  addEventListeners() {
+
+      // Optional: Toggle with 'C' key
+      document.addEventListener('keydown', (event) => {
+          if (event.key.toLowerCase() === 'c') {
+              this.isThirdPerson = !this.isThirdPerson;
+              this.updateMode();
+          }
+      });
+  }
 }
 
+// Initialize the camera toggle
+const cameraToggle = new CameraToggle();
 
-}
-}
 
 export { animate, scene };
