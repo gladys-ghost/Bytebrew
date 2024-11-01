@@ -1,37 +1,53 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import Level1 from "./World/Level1"; // Assuming Level1 class handles wall creation
-import {animate} from './playerModel';
-import {scene} from './playerModel';
-import { model } from "./playerModel";
 
-animate();
+const startMenu = document.getElementById("startMenu");
+const optionsScreen = document.getElementById("optionsScreen");
+const creditsScreen = document.getElementById("creditsScreen");
 
+const startButton = document.getElementById('startButton');
+const optionsButton = document.getElementById('optionsButton');
+const creditsButton = document.getElementById('creditsButton');
+const saveOptionsButton = document.getElementById('saveOptionsButton');
+const closeCreditsButton = document.getElementById('closeCreditsButton');
 
-// === Ground Plane ===
-const groundGeometry = new THREE.PlaneGeometry(50, 50);
-const loaderGround = new THREE.TextureLoader();
+// Function to load player model and setup scene objects
+async function loadPlayerModel() {
+  const { animate, scene } = await import('./playerModel');
 
-const baseColorTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_basecolor.png');
-const normalTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_normal.png');
-const roughnessTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_roughness.png');
+  // === Ground Plane Setup After Scene is Available ===
+  const groundGeometry = new THREE.PlaneGeometry(50, 50);
+  const loaderGround = new THREE.TextureLoader();
 
-[baseColorTexture, normalTexture, roughnessTexture].forEach((texture) => {
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(20, 20);
+  const baseColorTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_basecolor.png');
+  const normalTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_normal.png');
+  const roughnessTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_roughness.png');
+
+  [baseColorTexture, normalTexture, roughnessTexture].forEach((texture) => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(20, 20);
+  });
+
+  const groundMaterial = new THREE.MeshStandardMaterial({
+    map: baseColorTexture,
+    normalMap: normalTexture,
+    roughnessMap: roughnessTexture,
+  });
+
+  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground); // Add ground to scene after it is loaded
+
+  // Start animation if needed
+  animate();
+}
+
+startButton.addEventListener("click", () => {
+  // Hide start menu and load player model
+  startMenu.style.display = "none";
+  setTimeout(loadPlayerModel, 500); // Delay loading by 500ms
 });
-
-const groundMaterial = new THREE.MeshStandardMaterial({
-  map: baseColorTexture,
-  normalMap: normalTexture,
-  roughnessMap: roughnessTexture,
-});
-
-const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
 
 // === Movement Controls ===
 const keysPressed = {};
@@ -45,3 +61,4 @@ window.addEventListener("keyup", (event) => {
 });
 
 // === Setup Level ===
+// Any other level setup code goes here, ensuring it's done after loading the player model
