@@ -112,6 +112,8 @@ class GhostManager {
             const walkAction = ghost.mixer.clipAction(ghost.animations[5]);
             walkAction.reset().play();
         }, 1000);
+
+        createBloodSplatter(ghost.model.position);
     }
 
     playDeathAnimation(ghost) {
@@ -244,4 +246,50 @@ export function createGhostManager(scene) {
 
 export function updateGhosts(ghostManager, delta) {
     ghostManager.moveGhosts(delta);
+}
+
+function createBloodSplatter(position) {
+    const bloodParticles = new THREE.Points(
+        new THREE.BufferGeometry(),
+        new THREE.PointsMaterial({
+            color: 0xff0000,
+            size: 0.1,
+            map: new THREE.TextureLoader().load('./path/to/blood_texture.png'),
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        })
+    );
+
+    // Set initial position and velocity for particles
+    const positions = [];
+    const velocities = [];
+    for (let i = 0; i < 100; i++) {
+        positions.push(position.x, position.y, position.z);
+        velocities.push(
+            (Math.random() - 0.5) * 2,
+            Math.random() * 2,
+            (Math.random() - 0.5) * 2
+        );
+    }
+
+    bloodParticles.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    bloodParticles.userData.velocities = velocities;
+
+    scene.add(bloodParticles);
+
+    // Animate particles
+    const animateParticles = () => {
+        const positions = bloodParticles.geometry.attributes.position.array;
+        const velocities = bloodParticles.userData.velocities;
+        for (let i = 0; i < positions.length; i += 3) {
+            positions[i] += velocities[i] * 0.1;
+            positions[i + 1] += velocities[i + 1] * 0.1;
+            positions[i + 2] += velocities[i + 2] * 0.1;
+            velocities[i + 1] -= 0.01; // Gravity effect
+        }
+        bloodParticles.geometry.attributes.position.needsUpdate = true;
+        requestAnimationFrame(animateParticles);
+    };
+    animateParticles();
 }

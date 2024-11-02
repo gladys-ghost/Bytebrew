@@ -179,7 +179,8 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 // === Renderer Setup ===
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const canvas = document.getElementById('gameCanvas');
+const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: canvas });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -513,6 +514,9 @@ loader.load(
     }
 
     loadGun();
+
+    // Start the animation loop after the model is added to the scene
+    startAnimation();
   },
   function (xhr) {
     console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`);
