@@ -343,17 +343,91 @@ function triggerShooting() {
   shootAction.play();
   ammoDisplay.useAmmo();
 
-//  AmmoDisplay.useAmmo();
   window.singletons.shootSound.playbackRate = 1;
   window.singletons.shootSound.play().then(() => {
     console.log("Sound is playing");
   }).catch(e => console.log("Error playing sound: ", e));
 
-
+  // Add muzzle flash and flare
+  showMuzzleFlash();
 
   // Listen for the shooting animation to finish
   mixer.addEventListener('finished', onShootAnimationFinished);
   createBullet();
+}
+
+function showMuzzleFlash() {
+  // Load a texture for the muzzle flash
+  const textureLoader = new THREE.TextureLoader();
+  const muzzleFlashTexture = textureLoader.load('./path/to/muzzle_flash_texture.png'); // Replace with your texture path
+
+  // Create a custom shader material for the muzzle flash
+  const muzzleFlashMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      texture: { value: muzzleFlashTexture },
+      time: { value: 0.0 }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D texture;
+      uniform float time;
+      varying vec2 vUv;
+      void main() {
+        vec4 texColor = texture2D(texture, vUv);
+        float intensity = sin(time * 10.0) * 0.5 + 0.5;
+        gl_FragColor = vec4(texColor.rgb * intensity, texColor.a);
+      }
+    `,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  // Create a muzzle flash mesh
+  const muzzleFlashGeometry = new THREE.PlaneGeometry(1.0, 1.0); // Larger size for more impact
+  const muzzleFlash = new THREE.Mesh(muzzleFlashGeometry, muzzleFlashMaterial);
+
+  // Position the muzzle flash at the gun's muzzle
+  const muzzlePosition = new THREE.Vector3();
+  gunModel.getWorldPosition(muzzlePosition);
+  muzzleFlash.position.copy(muzzlePosition);
+  muzzleFlash.lookAt(camera.position); // Face the camera
+
+  // Add the muzzle flash to the scene
+  scene.add(muzzleFlash);
+
+  // Create a spotlight for the flare effect
+  const flareLight = new THREE.SpotLight(0xffaa00, 5, 20, Math.PI / 4, 0.5, 1);
+  flareLight.position.copy(muzzlePosition);
+  flareLight.target.position.set(
+    muzzlePosition.x + Math.sin(model.rotation.y),
+    muzzlePosition.y,
+    muzzlePosition.z + Math.cos(model.rotation.y)
+  );
+  scene.add(flareLight);
+  scene.add(flareLight.target);
+
+  // Animate the muzzle flash and light
+  const startTime = performance.now();
+  const animate = () => {
+    const elapsedTime = (performance.now() - startTime) / 1000;
+    muzzleFlashMaterial.uniforms.time.value = elapsedTime;
+
+    if (elapsedTime < 0.1) { // Duration of the effect
+      requestAnimationFrame(animate);
+    } else {
+      scene.remove(muzzleFlash);
+      scene.remove(flareLight);
+      scene.remove(flareLight.target);
+    }
+  };
+  animate();
 }
 
 function onShootAnimationFinished(event) {
