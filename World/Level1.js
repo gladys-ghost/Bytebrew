@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import Wall from "./Wall.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 
 
 export default class Level1 {
@@ -175,6 +176,92 @@ export default class Level1 {
     this.addBoundingBox(this.labWall3.mesh);
 
     this.scene.add(this.labGroup);
+
+    const fbxLoader = new FBXLoader();
+    fbxLoader.load(
+        '/models/fireplace/source/maya2sketchfab.fbx',
+        (fbx) => {
+            fbx.scale.set(0.4, 0.4, 0.4);
+            fbx.position.set(-22.5, 0, -10);
+            fbx.rotation.y = Math.PI / 2;
+            
+            // Basic material handling
+            fbx.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    
+                    // Create basic material for the fireplace structure
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0x808080,
+                        roughness: 0.7,
+                        metalness: 0.3
+                    });
+                    
+                    // If it's the fire part, make it emissive
+                    if (child.name.toLowerCase().includes('fire') || child.name.toLowerCase().includes('flame')) {
+                        material.emissive = new THREE.Color(0xff5500);
+                        material.emissiveIntensity = 2;
+                    }
+                    
+                    child.material = material;
+                }
+            });
+            
+            // Simple lighting setup
+            // Main bright light for the fire
+            const fireLight = new THREE.PointLight(0xff7700, 8, 20);
+            fireLight.position.copy(fbx.position);
+            fireLight.position.y += 2;
+            
+            // Ambient light to make the fireplace visible
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+            
+            // Animate the fire light
+            const animate = () => {
+                fireLight.intensity = 6 + Math.random() * 4; // Flicker between 6 and 10 intensity
+                requestAnimationFrame(animate);
+            };
+            animate();
+            
+            this.scene.add(ambientLight);
+            this.scene.add(fireLight);
+            this.scene.add(fbx);
+            
+            // Add collision box for the fireplace
+            const fireplaceBox = new THREE.Box3().setFromObject(fbx);
+            const boxSize = new THREE.Vector3();
+            fireplaceBox.getSize(boxSize);
+            
+            // Create a slightly smaller collision box
+            const collisionGeometry = new THREE.BoxGeometry(
+                boxSize.x * 0.8,  // Make collision box slightly smaller than the model
+                boxSize.y,
+                boxSize.z * 0.8
+            );
+            const collisionMaterial = new THREE.MeshBasicMaterial({
+                visible: false  // Make it invisible
+            });
+            const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
+            
+            // Position the collision box
+            collisionMesh.position.copy(fbx.position);
+            collisionMesh.rotation.copy(fbx.rotation);
+            
+            // Add to scene and store in bounding boxes array
+            this.scene.add(collisionMesh);
+            this.addBoundingBox(collisionMesh);
+            
+            // Store reference to remove later
+            this.fireplaceCollider = collisionMesh;
+        },
+        (xhr) => {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        (error) => {
+            console.error('Error loading fireplace:', error);
+        }
+    );
   }
 
   // Helper method to create and store bounding boxes for each wall
@@ -194,5 +281,16 @@ export default class Level1 {
     this.scene.remove(this.anotherRoomGroup);
     this.scene.remove(this.enemyRoomGroup);
     this.scene.remove(this.bedroomGroup);
+    
+    if (this.fireplaceCollider) {
+        this.scene.remove(this.fireplaceCollider);
+    }
+    
+    // Remove all lights and models
+    this.scene.traverse((object) => {
+        if (object.isPointLight || object.type === 'Group') {
+            this.scene.remove(object);
+        }
+    });
   }
 }

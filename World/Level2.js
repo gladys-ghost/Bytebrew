@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import Wall from "./Wall.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 
 
 export default class Level1 {
@@ -174,6 +175,59 @@ export default class Level1 {
     // this.addBoundingBox(this.labWall3.mesh);
 
     // this.scene.add(this.labGroup);
+
+    const fbxLoader = new FBXLoader();
+    fbxLoader.load(
+        '/models/fireplace/source/maya2sketchfab.fbx',
+        (fbx) => {
+            fbx.scale.set(0.2, 0.2, 0.2);
+            fbx.position.set(20, 0, -20);
+            fbx.rotation.y = -Math.PI / 2;
+            
+            // Load and apply textures if the mesh has them
+            if (fbx.material) {
+                const textureLoader = new THREE.TextureLoader();
+                
+                // Load diffuse/base color texture
+                textureLoader.load('/models/fireplace/textures/diffuse.jpg', (texture) => {
+                    fbx.material.map = texture;
+                    fbx.material.needsUpdate = true;
+                });
+                
+                // Load normal map
+                textureLoader.load('/models/fireplace/textures/normal.jpg', (texture) => {
+                    fbx.material.normalMap = texture;
+                    fbx.material.needsUpdate = true;
+                });
+                
+                // Add emissive glow for fire effect
+                fbx.material.emissive = new THREE.Color(0xff5500);
+                fbx.material.emissiveIntensity = 0.5;
+            }
+            
+            // Add flickering light effect
+            const fireLight = new THREE.PointLight(0xff5500, 2, 10);
+            fireLight.position.copy(fbx.position);
+            fireLight.position.y += 2;
+            
+            // Animate the firelight
+            const animateFireLight = () => {
+                const intensity = 2 + Math.random() * 0.5;
+                fireLight.intensity = intensity;
+                requestAnimationFrame(animateFireLight);
+            };
+            animateFireLight();
+            
+            this.scene.add(fireLight);
+            this.scene.add(fbx);
+        },
+        (xhr) => {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        (error) => {
+            console.error('Error loading fireplace:', error);
+        }
+    );
   }
 
   // Helper method to create and store bounding boxes for each wall
