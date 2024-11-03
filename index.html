@@ -75,9 +75,8 @@
       list-style-type: none; 
       padding: 0; 
     }
-    #creditsScreen ul li { 
-      margin: 20px 0; 
-      background-color: rgba(255, 255, 255, 0.2);
+    #creditsScreen ul li{ 
+      margin: 30px 0; 
     }
 
   </style>
@@ -85,7 +84,7 @@
 </head>
 <body>
   <div id="startMenu" class="menu-overlay">
-    <h1>First Person Shooter</h1>
+    <h1>Amazing Game ~ Haunted Edition</h1>
     <button id="startButton">Start</button>
     <button id="optionsButton">Options</button>
     <button id="creditsButton">Credits</button>
@@ -98,13 +97,17 @@
     <h1>Options</h1>
     <div class="options-grid">
 
-       <!-- Difficulty Selection -->
+      <!-- Difficulty Selection -->
       <label for="difficulty">Difficulty:</label>
       <select id="difficulty">
         <option value="easy">Easy</option>
         <option value="medium" selected>Medium</option>
         <option value="hard">Hard</option>
       </select>
+
+      <!-- Sound Toggle -->
+      <label for="soundToggle">Music:</label>
+      <input type="checkbox" id="soundToggle" checked>
 
       <!-- Mouse Sensitivity Control -->
       <label for="mouseSensitivity">Mouse Sensitivity:</label>
@@ -133,23 +136,22 @@
   <!-- Credits Screen -->
   <div id="creditsScreen" class="menu-overlay" style="display: none;">
     <h1>Credits</h1>
+    <h2>THE BYTEBREW TEAM</h2>
     <ul>
-      <li>Game Design: Trevor</li>
-      <li>Programming: Knowledge</li>
-      <li>3D Modeling: Tebza</li>
-      <li>Textures: Sipho</li>
-      <li>Sound Effects: Amogelang</li>
-      <li>Music: Muano</li>
-      <li>Special Thanks: ByteBrew</li>
+      <li>Knowledge</li>
+      <li>Tebza</li>
+      <li>Sipho</li>
+      <li>Amogelang</li>
+      <li>Muano</li>
     </ul>
-    <p>Made By ByteBrew using Three.js and lots of coffee</p>
+    <p>Made using Three.js and lots of coffee</p>
     <button id="closeCreditsButton">Close</button>
   </div>
 
   <!-- Audio Element for Sound Effects -->
   <div>
     <audio id="myAudio" autoplay="autoplay">
-        <source src="./public/shot.mp3" type="audio/mpeg"> Your browser does not support the audio element.
+      <source src="./public/theme_audio.mp3" type="audio/mpeg"> Your browser does not support the audio element.
     </audio>
   </div>
 
@@ -164,19 +166,63 @@
   </div>
 
   <script>
-      // Navigate to Controls Screen
-      document.getElementById('controls').addEventListener('click', () => {
+    // Audio playback
+    const myAudio = document.getElementById('myAudio');
+    myAudio.loop = true; 
+
+    // Load saved options from local storage
+    window.onload = () => {
+        const soundEnabled = localStorage.getItem('soundEnabled') === 'true';
+        document.getElementById('soundToggle').checked = soundEnabled;
+        myAudio.volume = (localStorage.getItem('soundVolume') || 75) / 100; // Default volume
+        myAudio.muted = !soundEnabled; // Mute if sound is not enabled
+        if (soundEnabled) {
+            myAudio.play();
+        }
+    };
+
+    // Update volume when changed
+    document.getElementById('soundVolume').addEventListener('input', (event) => {
+        myAudio.volume = event.target.value / 100; // Convert to 0-1 range
+    });
+
+    // Toggle sound on/off
+    document.getElementById('soundToggle').addEventListener('change', (event) => {
+        if (event.target.checked) {
+            myAudio.play();
+            myAudio.muted = false; // Unmute
+        } else {
+            myAudio.pause();
+            myAudio.muted = true; // Mute
+        }
+    });
+
+    // Save options when the save button is clicked
+    document.getElementById('saveOptionsButton').addEventListener('click', () => {
+        const soundEnabled = document.getElementById('soundToggle').checked;
+        localStorage.setItem('soundEnabled', soundEnabled);
+        localStorage.setItem('soundVolume', myAudio.volume * 100); // Save as percentage
+        document.getElementById('optionsScreen').style.display = 'none';
+    });
+
+    // Stop audio when navigating away
+    window.addEventListener('beforeunload', () => {
+        myAudio.pause();
+        myAudio.currentTime = 0; 
+    });
+
+    // Navigate to Controls Screen
+    document.getElementById('controls').addEventListener('click', () => {
       window.location.href = "./controls.html";
     });
 
-    //Go to instructions
-    // Navigate to Controls Screen
+    // Go to instructions
     document.getElementById('instructions').addEventListener('click', () => {
       window.location.href = "./instruction.html";
     });
 
-      // Show and Hide Credits Screen
-      document.getElementById('creditsButton').addEventListener('click', () => {
+    // Show and Hide Credits Screen
+    document.getElementById('creditsButton').addEventListener('click', () => {
       document.getElementById('creditsScreen').style.display = 'flex';
     });
     document.getElementById('closeCreditsButton').addEventListener('click', () => {
@@ -187,10 +233,7 @@
     document.getElementById('optionsButton').addEventListener('click', () => {
       document.getElementById('optionsScreen').style.display = 'flex';
     });
-    document.getElementById('saveOptionsButton').addEventListener('click', () => {
-      document.getElementById('optionsScreen').style.display = 'none';
-    });
- 
+    
   </script>
 
   <script type="module" src="main.js"></script>
