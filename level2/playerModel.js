@@ -1,17 +1,17 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import BossModel from "./bossModel";
-import Level1 from "./World/Level1";
-import Level2 from "./World/Level2";
-import { createGhostManager, updateGhosts } from './ghostManager';
-import { HealthBar } from "./utils/health";
-import { AmmoDisplay } from "./utils/amo";
-import { LoadingScreen } from "./utils/loadingScreen";
-import { InventorySystem } from "./utils/inventorySystem";
-import { KillCounterSystem } from "./utils/killCounter";
-import { FlickeringLightSystem } from "./utils/lights";
-import { createMedKitManager, updateMedKits } from "./utils/medkit";
-import { createArmorManager, updateArmorPickups } from "./utils/amobox";
+import BossModel from "../bossModel";
+import Level1 from "../World/Level1";
+import Level2 from "../World/Level2";
+import { createGhostManager, updateGhosts } from '../ghostManager';
+import { HealthBar } from "../utils/health";
+import { AmmoDisplay } from "../utils/amo";
+import { LoadingScreen } from "../utils/loadingScreen";
+import { InventorySystem } from "../utils/inventorySystem";
+import { KillCounterSystem } from "../utils/killCounter";
+import { FlickeringLightSystem } from "../utils/lights";
+import { createMedKitManager, updateMedKits } from "../utils/medkit";
+import { createArmorManager, updateArmorPickups } from "../utils/amobox";
 let kills = 0;
 
 let animationFrameId = null;
@@ -62,7 +62,7 @@ loadingScreen.mount();
 
 
 const killCounter = new KillCounterSystem({
-  totalEnemies: 3 
+  totalEnemies: 8 
 });
 
 
@@ -466,7 +466,7 @@ for (let i = 0; i < 3; i++) {
 
 // === Load Player Model ===
 loader.load(
-  "./public/obn_2.glb",
+  "../public/obn_2.glb",
   function (gltf) {
     model = gltf.scene;
     model.scale.set(0.3, 0.3, 0.3);
@@ -524,7 +524,7 @@ loader.load(
 
 function loadGun() {
   loader.load(
-    './public/gun.glb',
+    '../public/gun.glb',
     function (gltf) {
       gunModel = gltf.scene;
       gunModel.scale.set(3.5, 3.5, 3.5);
@@ -690,7 +690,7 @@ function updateFlashlightHelper() {
 }
 
 function loadBulletModel() {
-  loader.load("./public/bullet.glb", (gltf) => {
+  loader.load("../public/bullet.glb", (gltf) => {
     bulletModel = gltf.scene;
     bulletModel.scale.set(0.01, 0.01, 0.01);
   });
@@ -974,14 +974,11 @@ function checkPlayerDistance(player, door) {
         wallBoundingBoxes = [];
 
         // Load Level 2 after a slight delay to simulate loading
-        //add here
-        killCounter.reset(5);
-
-        
-        loadLevel2();
+        window.location.href = './level2/index.html';
+                loadLevel2();
         setTimeout(() => {
           hideLoadingScreen();  // Hide the loading screen once Level 2 is ready
-        }, 2000);
+        }, 3000);
 
       } else {
         popup = document.getElementById("door-popup");

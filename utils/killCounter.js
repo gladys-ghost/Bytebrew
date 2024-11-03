@@ -197,15 +197,26 @@ export class KillCounterSystem {
         return this.config.totalEnemies;
     }
 
-    reset() {
+    reset(newTotalEnemies) {
+        // Reset kill count
         this.state.enemiesKilled = 0;
+        
+        // Update total enemies if a new value is provided
+        if (typeof newTotalEnemies === 'number' && newTotalEnemies > 0) {
+            this.config.totalEnemies = newTotalEnemies;
+        }
+
         // Reset mission text style
         Object.assign(this.ui.missionText.style, {
             color: '#aaa',
             fontWeight: 'normal'
         });
+
+        // Update mission text with new total
         this.ui.missionText.querySelector('span:last-child').textContent = 
             `Kill ${this.config.totalEnemies} enemies`;
+
+        // Update the kill display
         this.updateUI();
     }
 }
