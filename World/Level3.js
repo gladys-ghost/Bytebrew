@@ -1,10 +1,6 @@
 import * as THREE from "three";
 import Wall from "./Wall.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import listener from "./audioListener.js";
-import camera from "../camera.js"
-import { cos } from "three/webgpu";
-import Ceiling from "./Ceiling.js";
 
 
 export default class Level1 {
@@ -12,8 +8,6 @@ export default class Level1 {
     this.scene = scene;
     this.player = player;
     this.offset = new Wall(0, 0, 0, 0, 0).wallWidth / 2;
-    this.objects = [];
-
 
     // Array to store bounding boxes for all walls
     this.wallBoundingBoxes = [];
@@ -26,14 +20,16 @@ export default class Level1 {
     let doorType = this.monstersDead ? "unlocked.glb" : "scene.gltf";
 
 
+    this.player.position.set(-20.83, 0, 22.9);;
+    console.log("Player:::: ",this.player);
+
+
     gltfLoader.load(
       `/science_lab_door_-_apocalyptic/${doorType}`,
       (gltf) => {
         doorModel = gltf.scene;
-        console.log(doorModel);
         doorModel.scale.set(2, 1.5, 1);
         doorModel.position.set(-23.83, 1.6, -24.9);
-        this.addBoundingBox(doorModel);
         this.scene.add(doorModel);
       },
       undefined,
@@ -79,11 +75,11 @@ export default class Level1 {
     this.addBoundingBox(this.bedroomWall1.mesh);
 
     this.bedroomWall2 = new Wall(
-      -16 + this.offset - slightOffset,
+      -16.5 + this.offset - slightOffset,
       0,
       15 + this.offset - slightOffset,
       Math.PI / 2,
-      12
+      13
     );
     this.bedroomGroup.add(this.bedroomWall2.mesh);
     this.addBoundingBox(this.bedroomWall2.mesh);
@@ -162,34 +158,22 @@ export default class Level1 {
       }
     );
 
-    // Ceiling
-
-    this.ceiling = new Ceiling(this.scene, 50, new Wall().wallHeight, 50);
-    this.ceiling.createCeilingLight( 17.5, new Wall().wallHeight - 0.2, 20, true);
-    this.ceiling.createCeilingLight( 5, new Wall().wallHeight - 0.2, 20, true);
-    this.ceiling.createCeilingLight( 24, new Wall().wallHeight - 0.2, -20, false);
-
-
-
-
-
-
     // Create the lab
-    this.labGroup = new THREE.Group();
+    // this.labGroup = new THREE.Group();
 
-    this.labWall1 = new Wall(10, 0, -17.5, 0, 15);
-    this.labGroup.add(this.labWall1.mesh);
-    this.addBoundingBox(this.labWall1.mesh);
+    // this.labWall1 = new Wall(10, 0, -17.5, 0, 15);
+    // this.labGroup.add(this.labWall1.mesh);
+    // this.addBoundingBox(this.labWall1.mesh);
 
-    this.labWall2 = new Wall(10, 0, 2, 0, 16);
-    this.labGroup.add(this.labWall2.mesh);
-    this.addBoundingBox(this.labWall2.mesh);
+    // this.labWall2 = new Wall(10, 0, 2, 0, 16);
+    // this.labGroup.add(this.labWall2.mesh);
+    // this.addBoundingBox(this.labWall2.mesh);
 
-    this.labWall3 = new Wall(-7.5, 0, 10, Math.PI / 2, 35);
-    this.labGroup.add(this.labWall3.mesh);
-    this.addBoundingBox(this.labWall3.mesh);
+    // this.labWall3 = new Wall(-7.5, 0, 10, Math.PI / 2, 35);
+    // this.labGroup.add(this.labWall3.mesh);
+    // this.addBoundingBox(this.labWall3.mesh);
 
-    this.scene.add(this.labGroup);
+    // this.scene.add(this.labGroup);
   }
 
   // Helper method to create and store bounding boxes for each wall
@@ -203,19 +187,4 @@ export default class Level1 {
   setMonstersDead(){
     this.monstersDead = true;
   }
-
-  clearScene() {
-    this.scene.remove(this.labGroup);
-    this.scene.remove(this.anotherRoomGroup);
-    this.scene.remove(this.enemyRoomGroup);
-    this.scene.remove(this.bedroomGroup);
-  }
-
-  setPlayer(player){
-    this.player = player;
-    this.player.position.set(-20, 0, 20);
-  }
-
-  // === Ceiling Setup ===
-
 }

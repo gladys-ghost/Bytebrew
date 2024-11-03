@@ -3,8 +3,11 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import BossModel from "./bossModel";
 import Level1 from "./World/Level1";
 import Level2 from "./World/Level2";
+import Level3 from "./World/Level3";
+import camera from "./camera"
 import { createGhostManager, updateGhosts } from './ghostManager';
 import { HealthBar } from "./utils/health";
+import listener from "./World/audioListener"
 import { AmmoDisplay } from "./utils/amo";
 import { LoadingScreen } from "./utils/loadingScreen";
 import { InventorySystem } from "./utils/inventorySystem";
@@ -15,7 +18,7 @@ import { createArmorManager, updateArmorPickups } from "./utils/amobox";
 let kills = 0;
 
 let animationFrameId = null;
-
+let boss = null;
 function pauseAnimation() {
   cancelAnimationFrame(animationFrameId); // Stop the animation
 
@@ -169,14 +172,6 @@ const scene = new THREE.Scene();
 let level = new Level1(scene);
 let wallBoundingBoxes = level.getWallBoundingBoxes();
 const ghostManager = createGhostManager(scene);
-
-// === Camera Setup ===
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
 
 // === Renderer Setup ===
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -521,6 +516,17 @@ loader.load(
     console.error('An error occurred while loading the player model:', error);
   }
 );
+camera.add(listener);
+// === Load Gun and Bullet Models ===
+const sound = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+
+audioLoader.load('./public/sounds/creepy.mp3', (buffer) => {
+  sound.setBuffer(buffer);
+  sound.setLoop(true);
+  sound.setVolume(0.5);
+  sound.play();
+});
 
 function loadGun() {
   loader.load(
@@ -954,18 +960,22 @@ function checkAndResolveCollision(deltaX, deltaZ) {
   return { collidedX, collidedZ };
 }
 let popup;
+let isTransitioning = false; // Flag to prevent multiple level transitions
+
 function checkPlayerDistance(player, door) {
   const distance = player.distanceTo(door);
   const interactionDistance = 3.0; // Adjust this value as needed
-  console.log(killCounter.getKillCount);
+  console.log(killCounter.getKillCount());  // Log kill count properly
 
   // If the player is within the interaction range
   if (distance <= interactionDistance) {
     showPopup();  // Show the interaction popup
 
-    if (keysPressed["e"]) {
-      // Check if all enemies are defeated
-      if (kills >= 3) {
+    if (keysPressed["e"] && !isTransitioning) {  // Check if 'e' is pressed and no transition is ongoing
+      // Check if all enemies are defeated for Level 1
+      if (kills >= 3 && level instanceof Level1) {
+        isTransitioning = true; // Set flag to prevent re-triggering
+
         // Display a loading screen while transitioning to Level 2
         showLoadingScreen();
 
@@ -974,15 +984,46 @@ function checkPlayerDistance(player, door) {
         wallBoundingBoxes = [];
 
         // Load Level 2 after a slight delay to simulate loading
-        loadLevel2();
         setTimeout(() => {
+          loadLevel2();
           hideLoadingScreen();  // Hide the loading screen once Level 2 is ready
+          isTransitioning = false; // Reset flag after transition
+          kills = 0;  // Reset kills for Level 2
+        }, 3000);
+
+      } else if (kills >= 5 && level instanceof Level2) {  // Check if all enemies are defeated for Level 2
+        isTransitioning = true; // Set flag to prevent re-triggering
+
+        // Display a loading screen while transitioning to Level 3
+        showLoadingScreen();
+
+        // Remove Level 2 from the scene
+        wallBoundingBoxes = [];
+
+        // Load Level 3 after a slight delay to simulate loading
+        setTimeout(() => {
+          loadLevel3();
+          hideLoadingScreen();  // Hide the loading screen once Level 3 is ready
+          isTransitioning = false; // Reset flag after transition
+          kills = 0;  // Reset kills for Level 3 if necessary
+           boss = new BossModel(scene);
+          // Start loading the boss model
+          boss.loadModel().then(() => {
+            console.log("Boss model loaded successfully");
+          }).catch((error) => {
+            console.error("Error loading boss model:", error);
+          });
+             
         }, 3000);
 
       } else {
-        popup = document.getElementById("door-popup");
+        if (!popup) {
+          popup = document.getElementById("door-popup");
+        }
         popup.style.display = "block";
-        popup.innerHTML = "Defeat all Monsters to open the door";
+        popup.innerHTML = level instanceof Level1 
+          ? "Defeat all Monsters to open the door (3 kills required)" 
+          : "Defeat all Monsters to open the door (5 kills required)";
       }
     }
   } else {
@@ -996,6 +1037,14 @@ function loadLevel2() {
   wallBoundingBoxes = level.getWallBoundingBoxes();
   console.log("Level 2 loaded!");
 }
+
+// Function to load Level 3 into the scene
+function loadLevel3() {
+  level = new Level3(scene, model);  // Initialize and load Level 3
+  wallBoundingBoxes = level.getWallBoundingBoxes();
+  console.log("Level 3 loaded!");
+}
+
 
 // Function to show a loading screen (could be a simple overlay)
 function showLoadingScreen() {
@@ -1046,7 +1095,6 @@ animationFrameId = requestAnimationFrame(animate);
     checkMedkitPickup();
 
     const delta = clock.getDelta();
-
     checkGhostCollisions();
     if (mixer) mixer.update(delta);
 
@@ -1058,6 +1106,7 @@ animationFrameId = requestAnimationFrame(animate);
     targetCube.rotation.y += 0.01;
     
     updateGhosts(ghostManager, delta);
+
 
     if (model) {
       let deltaX = 0;
@@ -1126,6 +1175,10 @@ animationFrameId = requestAnimationFrame(animate);
           .add(lookDirection);
         camera.lookAt(cameraLookAt.x, model.position.y + 1.5, cameraLookAt.z);
       }
+    }
+    if (boss) {
+      boss.update(delta);
+      boss.moveTowardsTarget(model); // Assuming `player` is the target object
     }
 
     // Handle animation state for walk
