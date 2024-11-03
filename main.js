@@ -46,7 +46,7 @@ async function loadPlayerModel() {
 startButton.addEventListener("click", () => {
   // Hide start menu and load player model
   startMenu.style.display = "none";
-  setTimeout(loadPlayerModel, 500); // Delay loading by 500ms
+  setTimeout(loadPlayerModel, 700); // Delay loading by 500ms
 });
 
 // === Movement Controls ===
