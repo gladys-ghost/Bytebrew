@@ -4,7 +4,9 @@ import Level1 from "./World/Level1";
 import Level2 from "./World/Level2";
 import { createGhostManager, updateGhosts } from './ghostManager';
 import listener from "./World/audioListener"
-import camera from "./camera"
+import camera from "./camera";
+import { FBXLoader } from "three/examples/jsm/Addons.js";
+import { mod } from "three/webgpu";
 
 let playerHealth = 10000000000000;
 const maxPlayerHealth = 100;
@@ -94,7 +96,7 @@ window.addEventListener("resize", () => {
 
 // === Lighting Setup ===
 // const ambientLight = new THREE.AmbientLight(0xffffff, 0.01);
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
+const ambientLight = new THREE.AmbientLight(0xffffff, 1);
 scene.add(ambientLight);
 const targetCube = new THREE.Mesh(
   new THREE.BoxGeometry(5, 5, 5),
@@ -133,6 +135,7 @@ const loader = new GLTFLoader();
 
 let mixer;
 let model;
+let modelBoundingBox;
 let walkAction;
 let shootAction;
 let gunModel;
@@ -156,35 +159,35 @@ window.addEventListener("keyup", (event) => {
 });
 
 // === Mouse Controls ===
-let mouseSensitivity = 0.002;
-let previousMouseX = window.innerWidth / 2;
-let previousMouseY = window.innerHeight / 2;
-let pitch = 0;
-let maxPitch = Math.PI / 2;
+// let mouseSensitivity = 0.002;
+// let previousMouseX = window.innerWidth / 2;
+// let previousMouseY = window.innerHeight / 2;
+// let pitch = 0;
+// let maxPitch = Math.PI / 2;
 
-document.body.requestPointerLock =
-  document.body.requestPointerLock ||
-  document.body.mozRequestPointerLock ||
-  document.body.webkitRequestPointerLock;
+// document.body.requestPointerLock =
+//   document.body.requestPointerLock ||
+//   document.body.mozRequestPointerLock ||
+//   document.body.webkitRequestPointerLock;
 
-document.body.onclick = () => {
-  document.body.requestPointerLock();
-};
+// document.body.onclick = () => {
+//   document.body.requestPointerLock();
+// };
 
-window.addEventListener("mousemove", (event) => {
-  const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-  const deltaY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+// window.addEventListener("mousemove", (event) => {
+//   const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+//   const deltaY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
 
-  if (model) {
-    model.rotation.y -= deltaX * mouseSensitivity;
-    pitch -= deltaY * mouseSensitivity;
-    pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
-    camera.rotation.x = pitch;
-  }
+//   if (model) {
+//     model.rotation.y -= deltaX * mouseSensitivity;
+//     pitch -= deltaY * mouseSensitivity;
+//     pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
+//     camera.rotation.x = pitch;
+//   }
 
-  previousMouseX += deltaX;
-  previousMouseY += deltaY;
-});
+//   previousMouseX += deltaX;
+//   previousMouseY += deltaY;
+// });
 
 // === Shooting Input ===
 window.addEventListener("mousedown", (event) => {
@@ -253,14 +256,18 @@ for (let i = 0; i < 3; i++) {
   scene.add(object);
 }
 
+var crosshair;
+
 // === Load Player Model ===
 loader.load(
-  "./public/obn_2.glb",
+  "/models/animations/animated_fps_hands_rifle_animation_pack.glb",
   function (gltf) {
     model = gltf.scene;
+    modelBoundingBox = new THREE.Box3().setFromObject(model);
     model.scale.set(0.3, 0.3, 0.3);
-    model.rotation.y = Math.PI;
-    model.position.set(13, 0, -19.9);
+    // model.rotation.y = Math.PI;
+
+    crosshair = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.1), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
 
     model.traverse((child) => {
       if (child.isMesh) {
@@ -277,21 +284,23 @@ loader.load(
 
     mixer = new THREE.AnimationMixer(model);
 
+    console.log("Animations:", gltf.animations);
+
     if (gltf.animations && gltf.animations.length) {
-      const walkClip = THREE.AnimationClip.findByName(gltf.animations, "npc_walk_pistol");
+      const walkClip = THREE.AnimationClip.findByName(gltf.animations, "Armature|Arms_FPS_Anim_Walks");
       if (walkClip) {
         walkAction = mixer.clipAction(walkClip);
         walkAction.setLoop(THREE.LoopRepeat, Infinity);
         walkAction.play();
         walkAction.paused = true;
       } else {
-        walkAction = mixer.clipAction(gltf.animations[0]);
+        walkAction = mixer.clipAction(gltf.animations[7]);
         walkAction.setLoop(THREE.LoopRepeat, Infinity);
         walkAction.play();
         walkAction.paused = true;
       }
 
-      const shootClip = THREE.AnimationClip.findByName(gltf.animations, "npc_shooting_pistol");
+      const shootClip = THREE.AnimationClip.findByName(gltf.animations, "Armature|Arms_FPS_Anim_Shoot");
       if (shootClip) {
         shootAction = mixer.clipAction(shootClip);
         shootAction.setLoop(THREE.LoopOnce, 1);
@@ -300,7 +309,8 @@ loader.load(
       }
     }
 
-    loadGun();
+    // loadGun();
+    loadBulletModel();
   },
   (xhr) => console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`),
   (error) => console.error("An error occurred while loading the player model:", error)
@@ -370,10 +380,14 @@ function loadGun() {
 }
 
 function loadBulletModel() {
-  loader.load("./public/bullet.glb", (gltf) => {
-    bulletModel = gltf.scene;
-    bulletModel.scale.set(0.05, 0.05, 0.05);
-  });
+  // loader.load("./public/bullet.glb", (gltf) => {
+  //   bulletModel = gltf.scene;
+  //   bulletModel.scale.set(0.05, 0.05, 0.05);
+  // });
+  const bulletGeometry = new THREE.SphereGeometry(0.01, 0.01, 0.01); // Adjust the size as needed
+  const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 }); // Black color
+
+  bulletModel = new THREE.Mesh(bulletGeometry, bulletMaterial);
 }
 
 // === Update Bullets and Collisions ===
@@ -407,19 +421,6 @@ function updateBullets(delta) {
         bullets.splice(i, 1);
       }
     });
-// === Red Flash Overlay Setup ===
-const hitFlash = document.createElement('div');
-hitFlash.style.position = 'fixed';
-hitFlash.style.top = '0';
-hitFlash.style.left = '0';
-hitFlash.style.width = '100vw';
-hitFlash.style.height = '100vh';
-hitFlash.style.backgroundColor = 'rgba(255, 0, 0, 0.5)'; // Red with transparency
-hitFlash.style.pointerEvents = 'none';
-hitFlash.style.opacity = '0'; // Start hidden
-hitFlash.style.transition = 'opacity 0.2s ease'; // Smooth fade out
-document.body.appendChild(hitFlash);
-
 // Function to trigger red flash
 function triggerHitFlash() {
     hitFlash.style.opacity = '1'; // Show overlay
@@ -455,6 +456,18 @@ function triggerHitFlash() {
     });
   }
 }
+// === Red Flash Overlay Setup ===
+const hitFlash = document.createElement('div');
+hitFlash.style.position = 'fixed';
+hitFlash.style.top = '0';
+hitFlash.style.left = '0';
+hitFlash.style.width = '100vw';
+hitFlash.style.height = '100vh';
+hitFlash.style.backgroundColor = 'rgba(255, 0, 0, 0.5)'; // Red with transparency
+hitFlash.style.pointerEvents = 'none';
+hitFlash.style.opacity = '0'; // Start hidden
+hitFlash.style.transition = 'opacity 0.2s ease'; // Smooth fade out
+document.body.appendChild(hitFlash);
 
 function checkGhostCollisions() {
     if (!model) return;
@@ -476,48 +489,40 @@ function checkGhostCollisions() {
     });
   }
 
-function createBullet() {
-  if (!bulletModel) {
-    console.error("Bullet model is not loaded.");
-    return;
+  function createBullet() {
+    if (!bulletModel) {
+      console.error("Bullet model is not loaded.");
+      return;
+    }
+  
+    // Clone the bullet model to create a new instance for shooting
+    const bullet = bulletModel.clone();
+  
+    // Get the gun's world position and apply it to the bullet
+    const gunPosition = new THREE.Vector3();
+    gunPosition.copy(model.position);
+    bullet.position.copy(gunPosition.add(new THREE.Vector3(0, 0, 0.02))); // Adjust offset as needed
+  
+    // Get the player's current forward direction
+    const forwardDirection = new THREE.Vector3(0, 0, 1); // Assuming -Z is the forward direction
+    forwardDirection.applyQuaternion(model.quaternion).normalize(); // Apply player's rotation and normalize
+  
+    // Set the bullet's position slightly in front of the gun
+    const bulletOffset = forwardDirection.clone().multiplyScalar(0.2); // Adjust offset as needed
+    bullet.position.add(bulletOffset);
+  
+    // Set bullet's rotation to match the player's forward direction
+    bullet.quaternion.copy(model.quaternion);
+  
+    // Set the bullet's velocity based on the forward direction and desired speed
+    const bulletSpeed = 100; // Adjust the bullet speed as necessary
+    bullet.userData = { velocity: forwardDirection.clone().multiplyScalar(bulletSpeed) };
+  
+    // Add the bullet to the scene and track it
+    scene.add(bullet);
+    bullets.push(bullet);
   }
-
-  // Clone the bullet model to create a new instance for shooting
-  const bullet = bulletModel.clone();
-
-  // Get the gun's world position and apply it to the bullet
-  const gunPosition = new THREE.Vector3();
-  gunModel.getWorldPosition(gunPosition);
-  bullet.position.copy(gunPosition);
-
-  // Get the player's current forward direction (we need to flip it)
-  const forwardDirection = new THREE.Vector3(0, 0, 1); // Default forward direction in gun's local space (positive Z)
-  forwardDirection.applyQuaternion(model.quaternion); // Apply the player's current rotation
-
-  // Reset the bullet's local rotation to face forward in local space
-  bullet.rotation.set(0, 0, 0); // Reset rotation if needed
-  bullet.quaternion.copy(model.quaternion); // Align bullet's rotation with the player's current rotation
-
-  // Adjust the bullet's forward direction to face the movement direction
-  const bulletRotation = new THREE.Quaternion();
-  bulletRotation.setFromUnitVectors(
-    new THREE.Vector3(0, 0, 1),
-    forwardDirection.normalize()
-  );
-  bullet.quaternion.premultiply(bulletRotation);
-
-  // Apply an offset to move the bullet slightly in front of the gun
-  const bulletOffset = new THREE.Vector3(0, 0, 0); // Offset in front of gun along its forward direction
-  bulletOffset.applyQuaternion(gunModel.quaternion); // Apply gun's rotation to the offset
-  bullet.position.add(bulletOffset); // Move bullet slightly forward from gun
-
-  // Set bullet's velocity based on the player's current forward direction (flip Z)
-  bullet.userData = { velocity: forwardDirection.clone().multiplyScalar(25) }; // Adjust bullet speed
-
-  // Add the bullet to the scene
-  scene.add(bullet);
-  bullets.push(bullet);
-}
+  
 
 // === Menu Handling ===
 const startMenu = document.getElementById("startMenu");
@@ -597,46 +602,87 @@ saveOptionsButton.addEventListener("click", applyOptions);
 
 function checkAndResolveCollision(deltaX, deltaZ) {
   const originalPosition = new THREE.Vector3().copy(model.position);
-  let modelBoundingBox = new THREE.Box3().setFromObject(model);
-
+  const modelBoundingBox = new THREE.Box3().setFromObject(model);
+  const modelRadius = (modelBoundingBox.max.x - modelBoundingBox.min.x) / 2; // Approximate player radius
   let collidedX = false;
   let collidedZ = false;
 
-  // Attempt to move along the X-axis
+  // Calculate movement direction and magnitude
+  const moveDirection = new THREE.Vector3(deltaX, 0, deltaZ).normalize();
+  const moveDistance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ); // Use Euclidean distance
+
+  // Temporarily move the model for collision checking
   model.position.x += deltaX;
-  modelBoundingBox.setFromObject(model);
-
-  for (const wallBoundingBox of wallBoundingBoxes) {
-    if (modelBoundingBox.intersectsBox(wallBoundingBox)) {
-      collidedX = true;
-      model.position.x = originalPosition.x; // Revert X movement on collision
-      break;
-    }
-  }
-
-  // Attempt to move along the Z-axis
   model.position.z += deltaZ;
-  modelBoundingBox.setFromObject(model);
 
-  for (const wallBoundingBox of wallBoundingBoxes) {
-    if (modelBoundingBox.intersectsBox(wallBoundingBox)) {
+  try {
+    // Define gun offset (you may need to adjust these values)
+    const gunOffset = new THREE.Vector3(0, 1.4, -0.6); // Example offset for gun position
+    const gunPosition = model.position.clone().add(gunOffset); // Calculate gun position
+
+    // Create raycaster in the direction of intended movement for X direction
+    const frontRayX = new THREE.Raycaster(
+      gunPosition, // Use gun position for the raycaster origin
+      new THREE.Vector3(deltaX, 0, 0).normalize(), // Direction only in X
+      0,
+      Math.abs(deltaX) + modelRadius // Use the length of the X movement
+    );
+
+    // Create raycaster in the direction of intended movement for Z direction
+    const frontRayZ = new THREE.Raycaster(
+      gunPosition, // Use gun position for the raycaster origin
+      new THREE.Vector3(0, 0, deltaZ).normalize(), // Direction only in Z
+      0,
+      Math.abs(deltaZ) + modelRadius // Use the length of the Z movement
+    );
+
+    // Detect obstacles in the X direction
+    const obstaclesX = frontRayX.intersectObjects(wallBoundingBoxes, true);
+    // console.log("X Direction Obstacles:", obstaclesX);
+
+    if (obstaclesX.length > 0 && obstaclesX[0].distance < Math.abs(deltaX) + modelRadius) {
+      const obstacleNormalX = obstaclesX[0].face.normal.clone();
+
+      // Calculate overlap for X direction
+      const overlapX = Math.abs(deltaX) + modelRadius - obstaclesX[0].distance;
+
+      // Push back along the normal direction of the obstacle
+      model.position.addScaledVector(obstacleNormalX, overlapX);
+      collidedX = true;
+    } 
+
+    // Detect obstacles in the Z direction
+    const obstaclesZ = frontRayZ.intersectObjects(wallBoundingBoxes, true);
+    // console.log("Z Direction Obstacles:", obstaclesZ);
+
+    if (obstaclesZ.length > 0 && obstaclesZ[0].distance < Math.abs(deltaZ) + modelRadius) {
+      const obstacleNormalZ = obstaclesZ[0].face.normal.clone();
+
+      // Calculate overlap for Z direction
+      const overlapZ = Math.abs(deltaZ) + modelRadius - obstaclesZ[0].distance;
+
+      // Push back along the normal direction of the obstacle
+      model.position.addScaledVector(obstacleNormalZ, overlapZ);
       collidedZ = true;
-      model.position.z = originalPosition.z; // Revert Z movement on collision
-      break;
-    }
+    } 
+  } catch (error) {
+    console.error("Collision check error:", error);
+    // Optional: revert to original position if an error occurs
+    model.position.copy(originalPosition);
   }
 
-  // If collision happens on X, allow sliding along Z
-  if (collidedX && !collidedZ) {
-    model.position.z = originalPosition.z + deltaZ;
+  // Reset to original position if there were collisions
+  if (collidedX) {
+    model.position.x = originalPosition.x;
   }
-  // If collision happens on Z, allow sliding along X
-  if (collidedZ && !collidedX) {
-    model.position.x = originalPosition.x + deltaX;
+  if (collidedZ) {
+    model.position.z = originalPosition.z;
   }
 
   return { collidedX, collidedZ };
 }
+
+
 let popup;
 function checkPlayerDistance(player, door) {
   const distance = player.distanceTo(door);
@@ -703,88 +749,168 @@ function hidePopup() {
   popup.style.display = "none";
 }
 // === Animation Loop ===
+// Variables for jumping and mouse controls
+let velocityY = 0;
+const gravity = -14.8;
+const jumpStrength = 9;
+let isGrounded = false;
+
+let yaw = 0;  // Horizontal rotation
+let pitch = 0; // Vertical rotation (limited for FPS)
+
+document.addEventListener('click', () => {
+  // Request pointer lock for mouse movement control
+  if (!document.pointerLockElement) {
+    document.body.requestPointerLock();
+  }
+});
+
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement) {
+    // Pointer locked, listen to mouse movements
+    document.addEventListener('mousemove', onMouseMove);
+  } else {
+    // Pointer unlocked, stop listening to mouse movements
+    document.removeEventListener('mousemove', onMouseMove);
+  }
+});
+
+// Function to handle mouse movement
+function onMouseMove(event) {
+  const sensitivity = 0.002;
+  yaw -= event.movementX * sensitivity;
+  pitch -= event.movementY * sensitivity;
+
+  // Clamp pitch to prevent flipping
+  pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+}
+
 function animate() {
   requestAnimationFrame(animate);
 
   const delta = clock.getDelta();
+  const walkSpeed = 5 * delta;
+  const smoothFactor = 0.1;
+  const targetPosition = new THREE.Vector3();
+  const targetQuaternion = new THREE.Quaternion();
 
   checkGhostCollisions();
   if (mixer) mixer.update(delta);
 
-  const walkSpeed = 5 * delta;
-  const rotateSpeed = Math.PI * delta;
-
-  let isMoving = false;
-
-
-  
+  // Rotate target cube for visual effect
   targetCube.rotation.y += 0.01;
-  
+
   updateGhosts(ghostManager, delta);
-
-
+  updateBullets(delta);
   if (model) {
-    let deltaX = 0;
-    let deltaZ = 0;
+    let moveX = 0;
+    let moveZ = 0;
+    let isMoving = false;
 
+    // Handle forward/backward movement
     if (keysPressed["w"] || keysPressed["arrowup"]) {
-      deltaZ = walkSpeed * Math.cos(model.rotation.y);
-      deltaX = walkSpeed * Math.sin(model.rotation.y);
+      moveZ += walkSpeed;
       isMoving = true;
     }
     if (keysPressed["s"] || keysPressed["arrowdown"]) {
-      deltaZ = -walkSpeed * Math.cos(model.rotation.y);
-      deltaX = -walkSpeed * Math.sin(model.rotation.y);
+      moveZ -= walkSpeed;
       isMoving = true;
     }
 
-    // Resolve collisions
-    const { collidedX, collidedZ } = checkAndResolveCollision(deltaX, deltaZ);
-
+    // Handle strafing
     if (keysPressed["a"] || keysPressed["arrowleft"]) {
-      model.rotation.y += rotateSpeed;
+      moveX -= walkSpeed;
+      isMoving = true;
     }
     if (keysPressed["d"] || keysPressed["arrowright"]) {
-      model.rotation.y -= rotateSpeed;
+      moveX += walkSpeed;
+      isMoving = true;
     }
 
-    // if closer to the door then can click e to open and a popup that says click e to open door will showup on the screen
+    // Handle jumping
+    if (keysPressed[" "] && isGrounded) {
+      velocityY = jumpStrength;
+      isGrounded = false;
+    }
 
-    checkPlayerDistance(model.position, new THREE.Vector3(-23.83, 1.6, -24.9));
+    // Apply gravity
+    velocityY += gravity * delta;
+    const moveY = velocityY * delta;
 
-    // Adjust the camera position and rotation to follow the player
-    const verticalOffset = Math.max(-0.4, Math.min(0.2, pitch * 2));
-    const cameraOffset = new THREE.Vector3(0, 6 + verticalOffset, 1.5);
+    // Check ground collision to reset jump
+    if (checkGroundCollision(model.position, moveY)) {
+      velocityY = 0;
+      isGrounded = true;
+      console.log("Grounded");
+    }
+
+    // Calculate movement based on camera direction
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+
+    const deltaX = forward.x * moveZ + right.x * moveX;
+    const deltaZ = forward.z * moveZ + right.z * moveX;
+
+    // Resolve collisions and apply movement
+    const { collidedX, collidedZ } = checkAndResolveCollision(deltaX, deltaZ);
+    // if (!collidedX) model.position.x += deltaX;
+    // if (!collidedZ) model.position.z += deltaZ;
+    model.position.y += moveY;
+
+    targetPosition.set(model.position.x + deltaX, model.position.y + moveY, model.position.z + deltaZ);
+    model.position.lerp(targetPosition, smoothFactor);
+
+    // Align model with yaw direction for realistic orientation
+    // model.rotation.y = yaw;
+    // model.rotation.x = pitch;
+
+    const modelDirection = new THREE.Vector3(Math.sin(yaw), Math.sin(pitch), Math.cos(yaw)).normalize();
+    model.lookAt(new THREE.Vector3().copy(model.position).add(modelDirection));
+
+    // Camera positioning and following
+    const cameraOffset = new THREE.Vector3(0, 0.3, -0.07);
     const cameraPosition = new THREE.Vector3()
       .copy(cameraOffset)
-      .applyMatrix4(model.matrixWorld); // Move camera relative to player
-
+      .applyMatrix4(model.matrixWorld);
     camera.position.copy(cameraPosition);
-    camera.rotateY(new THREE.Euler(0, model.rotation.y, 0, "YXZ"));
 
-    // Make the camera look in the direction the player is facing
-      const lookDirection = new THREE.Vector3(
-      Math.sin(model.rotation.y),
-      Math.sin(pitch), // Adjust look direction with pitch
-      Math.cos(model.rotation.y)
+    // Set camera look direction based on yaw and pitch
+    const lookDirection = new THREE.Vector3(
+      Math.sin(yaw),
+      Math.sin(pitch),
+      Math.cos(yaw)
     ).normalize();
 
     const cameraLookAt = new THREE.Vector3()
-      .copy(model.position)
+      .copy(camera.position)
       .add(lookDirection);
-    camera.lookAt(cameraLookAt.x, model.position.y + 1.5, cameraLookAt.z); // Adjust the Y axis for smoother camera angle
-  }
+    camera.lookAt(cameraLookAt);
 
-  // Handle animation state for walk
-  if (walkAction) {
-    if (isMoving) {
-      if (walkAction.paused) walkAction.paused = false;
-    } else {
-      if (!walkAction.paused) walkAction.paused = true;
+    // camera.rotateY(0.2);
+
+    // model.lookAt(new THREE.Vector3().copy(model.position).add(lookDirection));
+
+    // Handle walk animation
+    if (walkAction) {
+      walkAction.paused = !isMoving;
     }
   }
-  updateBullets(delta);
+
+  // Update bullets and render the scene
+  
   renderer.render(scene, camera);
 }
+
+// Ground collision check for jumping
+function checkGroundCollision(position, moveY) {
+  // Check if moving downward and near ground level, simulating a basic ground check
+  if (position.y + moveY <= 2) { // Adjust ground level as needed
+    position.y = 2;
+    return true;
+  }
+  return false;
+}
+
+
 
 export  { animate, scene, model };

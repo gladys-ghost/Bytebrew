@@ -3,7 +3,7 @@ import * as THREE from "three";
 export default class Wall {
   constructor(x, y, z, rotation = 0, size = 20) {
     this.wallHeight = 5;
-    this.wallWidth = 0.2;
+    this.wallWidth = 0.3;
     this.wallDepth = size;
 
     const textureLoader = new THREE.TextureLoader();

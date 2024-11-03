@@ -5,14 +5,17 @@ import listener from "./audioListener.js";
 import camera from "../camera.js"
 import { cos } from "three/webgpu";
 import Ceiling from "./Ceiling.js";
+import Ground from "./Ground.js";
 
 
 export default class Level1 {
-  constructor(scene, player) {
+  constructor(scene) {
+
     this.scene = scene;
-    this.player = player;
     this.offset = new Wall(0, 0, 0, 0, 0).wallWidth / 2;
     this.objects = [];
+    this.ground = new Ground();
+    this.ground.addToScene(this.scene);
 
 
     // Array to store bounding boxes for all walls
@@ -588,7 +591,7 @@ const audioLoader = new THREE.AudioLoader();
   // Helper method to create and store bounding boxes for each wall
   addBoundingBox(mesh) {
     const boundingBox = new THREE.Box3().setFromObject(mesh);
-    this.wallBoundingBoxes.push(boundingBox);
+    this.wallBoundingBoxes.push(mesh);
   }
   getWallBoundingBoxes() {
     return this.wallBoundingBoxes;
@@ -606,7 +609,7 @@ const audioLoader = new THREE.AudioLoader();
 
   setPlayer(player){
     this.player = player;
-    this.player.position.set(-20, 0, 20);
+    this.player.position.set(-20, 15, 20);
   }
 
   // === Ceiling Setup ===
