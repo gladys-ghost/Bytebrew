@@ -27,7 +27,7 @@ export default class Level1 {
 
 
     gltfLoader.load(
-      `/science_lab_door_-_apocalyptic/${doorType}`,
+      `./science_lab_door_-_apocalyptic/${doorType}`,
       (gltf) => {
         doorModel = gltf.scene;
         console.log(doorModel);
@@ -96,7 +96,7 @@ export default class Level1 {
     let roomDoorModel;
 
     gltfLoader.load(
-      "/prison_cell_door/scene.gltf",
+      "./prison_cell_door/scene.gltf",
       (gltf) => {
         roomDoorModel = gltf.scene;
         roomDoorModel.scale.set(2, 1.5, 1);
@@ -172,7 +172,7 @@ let clock = new THREE.Clock();
 let ghostSound = new THREE.PositionalAudio(listener);
 
 gltfLoader.load(
-  "/prison_cell_door/ragno_monster.glb",
+  "./prison_cell_door/ragno_monster.glb",
   (gltf) => {
     ghost = gltf.scene;
     console.log(ghost);
@@ -246,7 +246,7 @@ let mixer1;
 let clock1 =new THREE.Clock();
 let wolfSound = new THREE.PositionalAudio(listener);
 gltfLoader.load(
-  "/prison_cell_door/girl.glb",
+  "./prison_cell_door/girl.glb",
   (gltf) => {
     wolf = gltf.scene;
     console.log(wolf);
