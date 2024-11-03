@@ -3,7 +3,10 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import BossModel from "./bossModel";
 import Level1 from "./World/Level1";
 import Level2 from "./World/Level2";
+import Level3 from "./World/Level3";
+// import camera from "./camera";
 import { createGhostManager, updateGhosts } from './ghostManager';
+import listener from "./World/audioListener"
 import { HealthBar } from "./utils/health";
 import { AmmoDisplay } from "./utils/amo";
 import { LoadingScreen } from "./utils/loadingScreen";
@@ -15,6 +18,8 @@ import { createArmorManager, updateArmorPickups } from "./utils/amobox";
 let kills = 0;
 
 let animationFrameId = null;
+let boss = null;
+
 
 function pauseAnimation() {
   cancelAnimationFrame(animationFrameId); // Stop the animation
@@ -273,21 +278,21 @@ document.body.onclick = () => {
   document.body.requestPointerLock(); // Request pointer lock on click
 };
 
-window.addEventListener('mousemove', (event) => {
-  // Calculate mouse movement
-  const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-  const deltaY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+// window.addEventListener('mousemove', (event) => {
+//   // Calculate mouse movement
+//   const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+//   const deltaY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
 
-  if (model) {
-    // Rotate model based on mouse movement
-    model.rotation.y -= deltaX * mouseSensitivity; // Yaw (left/right)
-    pitch -= deltaY * mouseSensitivity; // Pitch (up/down)
+//   if (model) {
+//     // Rotate model based on mouse movement
+//     model.rotation.y -= deltaX * mouseSensitivity; // Yaw (left/right)
+//     pitch -= deltaY * mouseSensitivity; // Pitch (up/down)
 
-    // Clamp the pitch to prevent flipping
-    pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
-    camera.rotation.x = pitch; // Apply pitch to the camera
-  }
-});
+//     // Clamp the pitch to prevent flipping
+//     pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
+//     camera.rotation.x = pitch; // Apply pitch to the camera
+//   }
+// });
 
 // Optionally handle pointer lock change events for better UX
 document.addEventListener('pointerlockchange', () => {
@@ -395,8 +400,8 @@ function showMuzzleFlash() {
 
   // Position the muzzle flash at the gun's muzzle
   const muzzlePosition = new THREE.Vector3();
-  gunModel.getWorldPosition(muzzlePosition);
-  muzzleFlash.position.copy(muzzlePosition);
+  muzzlePosition.copy(model.position);
+  muzzleFlash.position.copy(muzzlePosition.add(new THREE.Vector3(0, 0, 0.2)));
   muzzleFlash.lookAt(camera.position); // Face the camera
 
   // Add the muzzle flash to the scene
@@ -466,12 +471,12 @@ for (let i = 0; i < 3; i++) {
 
 // === Load Player Model ===
 loader.load(
-  "./public/obn_2.glb",
+  "/models/animations/animated_fps_hands_rifle_animation_pack.glb",
   function (gltf) {
     model = gltf.scene;
     model.scale.set(0.3, 0.3, 0.3);
-    model.rotation.y = Math.PI;
-    model.position.set(0, 0, 0);
+    // model.rotation.y = Math.PI;
+    model.position.set(0, 4, 0);
 
     model.traverse((child) => {
       if (child.isMesh) {
@@ -488,14 +493,14 @@ loader.load(
     mixer = new THREE.AnimationMixer(model);
 
     if (gltf.animations && gltf.animations.length) {
-      const walkClip = THREE.AnimationClip.findByName(gltf.animations, 'npc_walk_pistol');
+      const walkClip = THREE.AnimationClip.findByName(gltf.animations, "Armature|Arms_FPS_Anim_Walks");
       if (walkClip) {
         walkAction = mixer.clipAction(walkClip);
         walkAction.setLoop(THREE.LoopRepeat, Infinity);
         walkAction.play();
         walkAction.paused = true;
       } else {
-        walkAction = mixer.clipAction(gltf.animations[0]);
+        walkAction = mixer.clipAction(gltf.animations[7]);
         walkAction.setLoop(THREE.LoopRepeat, Infinity);
         walkAction.play();
         walkAction.paused = true;
@@ -503,7 +508,7 @@ loader.load(
       }
 
       // === Shooting Animation Setup ===
-      const shootClip = THREE.AnimationClip.findByName(gltf.animations, 'npc_shooting_pistol');
+      const shootClip = THREE.AnimationClip.findByName(gltf.animations, "Armature|Arms_FPS_Anim_Shoot");
       if (shootClip) {
         shootAction = mixer.clipAction(shootClip);
         shootAction.setLoop(THREE.LoopOnce, 1);
@@ -512,7 +517,8 @@ loader.load(
       }
     }
 
-    loadGun();
+    // loadGun();
+    loadBulletModel();
   },
   function (xhr) {
     console.log(`${(xhr.loaded / xhr.total) * 100}% loaded`);
@@ -690,10 +696,14 @@ function updateFlashlightHelper() {
 }
 
 function loadBulletModel() {
-  loader.load("./public/bullet.glb", (gltf) => {
-    bulletModel = gltf.scene;
-    bulletModel.scale.set(0.01, 0.01, 0.01);
-  });
+  // loader.load("./public/bullet.glb", (gltf) => {
+  //   bulletModel = gltf.scene;
+  //   bulletModel.scale.set(0.05, 0.05, 0.05);
+  // });
+  const bulletGeometry = new THREE.SphereGeometry(0.01, 0.01, 0.01); // Adjust the size as needed
+  const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 }); // Black color
+
+  bulletModel = new THREE.Mesh(bulletGeometry, bulletMaterial);
 }
 
 // === Update Bullets and Collisions ===
@@ -769,48 +779,39 @@ function checkGhostCollisions() {
     });
   }
 
-function createBullet() {
-  if (!bulletModel) {
-    console.error("Bullet model is not loaded.");
-    return;
+  function createBullet() {
+    if (!bulletModel) {
+      console.error("Bullet model is not loaded.");
+      return;
+    }
+  
+    // Clone the bullet model to create a new instance for shooting
+    const bullet = bulletModel.clone();
+  
+    // Get the gun's world position and apply it to the bullet
+    const gunPosition = new THREE.Vector3();
+    gunPosition.copy(model.position);
+    bullet.position.copy(gunPosition.add(new THREE.Vector3(0, 0, 0.02))); // Adjust offset as needed
+  
+    // Get the player's current forward direction
+    const forwardDirection = new THREE.Vector3(0, 0, 1); // Assuming -Z is the forward direction
+    forwardDirection.applyQuaternion(model.quaternion).normalize(); // Apply player's rotation and normalize
+  
+    // Set the bullet's position slightly in front of the gun
+    const bulletOffset = forwardDirection.clone().multiplyScalar(0.2); // Adjust offset as needed
+    bullet.position.add(bulletOffset);
+  
+    // Set bullet's rotation to match the player's forward direction
+    bullet.quaternion.copy(model.quaternion);
+  
+    // Set the bullet's velocity based on the forward direction and desired speed
+    const bulletSpeed = 100; // Adjust the bullet speed as necessary
+    bullet.userData = { velocity: forwardDirection.clone().multiplyScalar(bulletSpeed) };
+  
+    // Add the bullet to the scene and track it
+    scene.add(bullet);
+    bullets.push(bullet);
   }
-
-  // Clone the bullet model to create a new instance for shooting
-  const bullet = bulletModel.clone();
-
-  // Get the gun's world position and apply it to the bullet
-  const gunPosition = new THREE.Vector3();
-  gunModel.getWorldPosition(gunPosition);
-  bullet.position.copy(gunPosition);
-
-  // Get the player's current forward direction (we need to flip it)
-  const forwardDirection = new THREE.Vector3(0, 0, 1); // Default forward direction in gun's local space (positive Z)
-  forwardDirection.applyQuaternion(model.quaternion); // Apply the player's current rotation
-
-  // Reset the bullet's local rotation to face forward in local space
-  bullet.rotation.set(0, 0, 0); // Reset rotation if needed
-  bullet.quaternion.copy(model.quaternion); // Align bullet's rotation with the player's current rotation
-
-  // Adjust the bullet's forward direction to face the movement direction
-  const bulletRotation = new THREE.Quaternion();
-  bulletRotation.setFromUnitVectors(
-    new THREE.Vector3(0, 0, 1),
-    forwardDirection.normalize()
-  );
-  bullet.quaternion.premultiply(bulletRotation);
-
-  // Apply an offset to move the bullet slightly in front of the gun
-  const bulletOffset = new THREE.Vector3(0, 0, 0); // Offset in front of gun along its forward direction
-  bulletOffset.applyQuaternion(gunModel.quaternion); // Apply gun's rotation to the offset
-  bullet.position.add(bulletOffset); // Move bullet slightly forward from gun
-
-  // Set bullet's velocity based on the player's current forward direction (flip Z)
-  bullet.userData = { velocity: forwardDirection.clone().multiplyScalar(25) }; // Adjust bullet speed
-
-  // Add the bullet to the scene
-  scene.add(bullet);
-  bullets.push(bullet);
-}
 
 // === Menu Handling ===
 const startMenu = document.getElementById("startMenu");
@@ -953,19 +954,24 @@ function checkAndResolveCollision(deltaX, deltaZ) {
 
   return { collidedX, collidedZ };
 }
+
 let popup;
+let isTransitioning = false; // Flag to prevent multiple level transitions
+
+
 function checkPlayerDistance(player, door) {
   const distance = player.distanceTo(door);
   const interactionDistance = 3.0; // Adjust this value as needed
-  console.log(killCounter.getKillCount);
+  console.log(killCounter.getKillCount()); //it might be getKillCount
 
   // If the player is within the interaction range
   if (distance <= interactionDistance) {
     showPopup();  // Show the interaction popup
 
-    if (keysPressed["e"]) {
-      // Check if all enemies are defeated
-      if (kills >= 3) {
+    if (keysPressed["e"] && !isTransitioning) {  // Check if 'e' is pressed and no transition is ongoing
+      // Check if all enemies are defeated for Level 1
+      if (kills >= 3 && level instanceof Level1) {
+        isTransitioning = true; // Set flag to prevent re-triggering
         // Display a loading screen while transitioning to Level 2
         showLoadingScreen();
 
@@ -975,18 +981,50 @@ function checkPlayerDistance(player, door) {
 
         // Load Level 2 after a slight delay to simulate loading
         //add here
-        killCounter.reset(5);
-
-        
-        loadLevel2();
         setTimeout(() => {
+          loadLevel2();
           hideLoadingScreen();  // Hide the loading screen once Level 2 is ready
-        }, 2000);
+          isTransitioning = false; // Reset flag after transition
+          kills = 0;  // Reset kills for Level 2
+        }, 3000);
+
+      } else if (kills >= 5 && level instanceof Level2) {  // Check if all enemies are defeated for Level 2
+        isTransitioning = true; // Set flag to prevent re-triggering
+
+        // Display a loading screen while transitioning to Level 3
+        showLoadingScreen();
+
+        // Remove Level 2 from the scene
+        wallBoundingBoxes = [];
+
+        // Load Level 3 after a slight delay to simulate loading
+        setTimeout(() => {
+        loadLevel3();
+        hideLoadingScreen();  // Hide the loading screen once Level 3 is ready
+        isTransitioning = false; // Reset flag after transition
+        kills = 0;  // Reset kills for Level 3 if necessary
+         boss = new BossModel(scene);
+        // Start loading the boss model
+        boss.loadModel().then(() => {
+          console.log("Boss model loaded successfully");
+        }).catch((error) => {
+          console.error("Error loading boss model:", error);
+        });
+           
+      }, 3000);
+    
+
 
       } else {
+        if (!popup) {
+
         popup = document.getElementById("door-popup");
+        }
         popup.style.display = "block";
-        popup.innerHTML = "Defeat all Monsters to open the door";
+        popup.innerHTML = level instanceof Level1 
+        ? "Defeat all Monsters to open the door (3 kills required)" 
+        : "Defeat all Monsters to open the door (5 kills required)";
+
       }
     }
   } else {
@@ -1000,6 +1038,16 @@ function loadLevel2() {
   wallBoundingBoxes = level.getWallBoundingBoxes();
   console.log("Level 2 loaded!");
 }
+
+
+// Function to load Level 3 into the scene
+function loadLevel3() {
+  level = new Level3(scene, model);  // Initialize and load Level 3
+  wallBoundingBoxes = level.getWallBoundingBoxes();
+  console.log("Level 3 loaded!");
+}
+
+
 
 // Function to show a loading screen (could be a simple overlay)
 function showLoadingScreen() {
@@ -1034,7 +1082,42 @@ function startAnimation() {
 
 // Function to stop the animation
 
+// === Animation Loop ===
+// Variables for jumping and mouse controls
+let velocityY = 0;
+const gravity = -10;
+const jumpStrength = 6;
+let isGrounded = false;
 
+let yaw = 0;  // Horizontal rotation
+pitch = 0; // Vertical rotation (limited for FPS)
+
+document.addEventListener('click', () => {
+  // Request pointer lock for mouse movement control
+  if (!document.pointerLockElement) {
+    document.body.requestPointerLock();
+  }
+});
+
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement) {
+    // Pointer locked, listen to mouse movements
+    document.addEventListener('mousemove', onMouseMove);
+  } else {
+    // Pointer unlocked, stop listening to mouse movements
+    document.removeEventListener('mousemove', onMouseMove);
+  }
+});
+
+// Function to handle mouse movement
+function onMouseMove(event) {
+  const sensitivity = 0.002;
+  yaw -= event.movementX * sensitivity;
+  pitch -= event.movementY * sensitivity;
+
+  // Clamp pitch to prevent flipping
+  pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+}
 
 
 function animate() {
@@ -1044,7 +1127,7 @@ animationFrameId = requestAnimationFrame(animate);
 
 
 
-  if(model && gunModel && bulletModel){
+  if(model && bulletModel){
     loadingScreen.unmount();
     updateFlashlightHelper();
     checkMedkitPickup();
@@ -1056,81 +1139,106 @@ animationFrameId = requestAnimationFrame(animate);
 
     const walkSpeed = 5 * delta;
     const rotateSpeed = Math.PI * delta;
+    const smoothFactor = 0.1;
+    const targetPosition = new THREE.Vector3();
+    const targetQuaternion = new THREE.Quaternion();
 
     let isMoving = false;
     
     targetCube.rotation.y += 0.01;
     
     updateGhosts(ghostManager, delta);
+    updateBullets(delta);
 
     if (model) {
-      let deltaX = 0;
-      let deltaZ = 0;
-
+      let moveX = 0;
+      let moveZ = 0;
+      let isMoving = false;
+  
+      // Handle forward/backward movement
       if (keysPressed["w"] || keysPressed["arrowup"]) {
-        deltaZ = walkSpeed * Math.cos(model.rotation.y);
-        deltaX = walkSpeed * Math.sin(model.rotation.y);
+        moveZ += walkSpeed;
         isMoving = true;
       }
       if (keysPressed["s"] || keysPressed["arrowdown"]) {
-        deltaZ = -walkSpeed * Math.cos(model.rotation.y);
-        deltaX = -walkSpeed * Math.sin(model.rotation.y);
+        moveZ -= walkSpeed;
         isMoving = true;
       }
-
-      // Resolve collisions
-      const { collidedX, collidedZ } = checkAndResolveCollision(deltaX, deltaZ);
-
+  
+      // Handle strafing
       if (keysPressed["a"] || keysPressed["arrowleft"]) {
-        model.rotation.y += rotateSpeed;
+        moveX -= walkSpeed;
+        isMoving = true;
       }
       if (keysPressed["d"] || keysPressed["arrowright"]) {
-        model.rotation.y -= rotateSpeed;
+        moveX += walkSpeed;
+        isMoving = true;
       }
-
-      checkPlayerDistance(model.position, new THREE.Vector3(-23.83, 1.6, -24.9));
-
-      // Handle camera based on view mode
-      if (isThirdPerson) {
-        // Third person camera setup
-        const cameraOffset = new THREE.Vector3(0, 3, -8);
-        const smoothness = 0.1;
-
-        // Calculate desired camera position
-        const desiredPosition = new THREE.Vector3()
-          .copy(model.position)
-          .add(cameraOffset.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), model.rotation.y));
-
-        // Smoothly interpolate current camera position to desired position
-        camera.position.lerp(desiredPosition, smoothness);
-
-        // Make camera look at player's head level
-        const lookAtPosition = new THREE.Vector3()
-          .copy(model.position)
-          .add(new THREE.Vector3(0, 2, 0));
-
-        camera.lookAt(lookAtPosition);
-      } else {
-        // First person camera (original code)
-        const cameraOffset = new THREE.Vector3(0, 6, 1.5);
-        const cameraPosition = new THREE.Vector3()
-          .copy(cameraOffset)
-          .applyMatrix4(model.matrixWorld);
-
-        camera.position.copy(cameraPosition);
-
-        const lookDirection = new THREE.Vector3(
-          Math.sin(model.rotation.y),
-          0,
-          Math.cos(model.rotation.y)
-        ).normalize();
-
-        const cameraLookAt = new THREE.Vector3()
-          .copy(model.position)
-          .add(lookDirection);
-        camera.lookAt(cameraLookAt.x, model.position.y + 1.5, cameraLookAt.z);
+  
+      // Handle jumping
+      if (keysPressed[" "] && isGrounded) {
+        velocityY = jumpStrength;
+        isGrounded = false;
       }
+  
+      // Apply gravity
+      velocityY += gravity * delta;
+      const moveY = velocityY * delta;
+  
+      // Check ground collision to reset jump
+      if (checkGroundCollision(model.position, moveY)) {
+        velocityY = 0;
+        isGrounded = true;
+        console.log("Grounded");
+      }
+  
+      // Calculate movement based on camera direction
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  
+      const deltaX = forward.x * moveZ + right.x * moveX;
+      const deltaZ = forward.z * moveZ + right.z * moveX;
+  
+      // Resolve collisions and apply movement
+      const { collidedX, collidedZ } = checkAndResolveCollision(deltaX, deltaZ);
+      // if (!collidedX) model.position.x += deltaX;
+      // if (!collidedZ) model.position.z += deltaZ;
+      model.position.y += moveY;
+  
+      targetPosition.set(model.position.x + deltaX, model.position.y + moveY, model.position.z + deltaZ);
+      model.position.lerp(targetPosition, smoothFactor);
+  
+      // Align model with yaw direction for realistic orientation
+      // model.rotation.y = yaw;
+      // model.rotation.x = pitch;
+  
+      const modelDirection = new THREE.Vector3(Math.sin(yaw), Math.sin(pitch), Math.cos(yaw)).normalize();
+      model.lookAt(new THREE.Vector3().copy(model.position).add(modelDirection));
+  
+      // Camera positioning and following
+      const cameraOffset = new THREE.Vector3(0, 0.3, -0.07);
+      const cameraPosition = new THREE.Vector3()
+        .copy(cameraOffset)
+        .applyMatrix4(model.matrixWorld);
+      camera.position.copy(cameraPosition);
+  
+      // Set camera look direction based on yaw and pitch
+      const lookDirection = new THREE.Vector3(
+        Math.sin(yaw),
+        Math.sin(pitch),
+        Math.cos(yaw)
+      ).normalize();
+  
+      const cameraLookAt = new THREE.Vector3()
+        .copy(camera.position)
+        .add(lookDirection);
+      camera.lookAt(cameraLookAt);
     }
+    if (boss) {
+      boss.update(delta);
+      boss.moveTowardsTarget(model); // Assuming `player` is the target object
+    }
+    checkPlayerDistance(model.position, new THREE.Vector3(-23.83, 1.6, -24.9));
 
     // Handle animation state for walk
     if (walkAction) {
@@ -1140,7 +1248,7 @@ animationFrameId = requestAnimationFrame(animate);
         if (!walkAction.paused) walkAction.paused = true;
       }
     }
-    updateBullets(delta);
+    
     renderer.render(scene, camera);
   } else {
     if(gameStarted) {
@@ -1291,6 +1399,14 @@ class CameraToggle {
           }
       });
   }
+}
+function checkGroundCollision(position, moveY) {
+  // Check if moving downward and near ground level, simulating a basic ground check
+  if (position.y + moveY <= 2) { // Adjust ground level as needed
+    position.y = 2;
+    return true;
+  }
+  return false;
 }
 
 // Initialize the camera toggle
