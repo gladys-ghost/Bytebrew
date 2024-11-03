@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import camera from "./camera"
+import listener from "./World/audioListener";
 
 class GhostManager {
     constructor(scene) {
@@ -37,10 +39,16 @@ class GhostManager {
             Math.random() * (this.boundingBox.maxZ - this.boundingBox.minZ) + this.boundingBox.minZ
         ];
     }
-
+ 
     createGhost(position) {
+        camera.add(listener);
+       
+
+
+let ghostSound = new THREE.PositionalAudio(listener);
         this.loader.load('./scp-096_original/scene.gltf', (gltf) => {
             const ghostModel = gltf.scene;
+            const audioLoader = new THREE.AudioLoader();
             const ghostData = {
                 model: ghostModel,
                 mixer: new THREE.AnimationMixer(ghostModel),
@@ -65,7 +73,18 @@ class GhostManager {
             });
 
             this.scene.add(ghostModel);
+            ghostModel.add(ghostSound);
 
+            // Load werewolf sound
+       audioLoader.load('./public/sounds/zombie.mp3', (buffer) => {
+        ghostSound.setBuffer(buffer);
+        ghostSound.setLoop(true);
+        ghostSound.setVolume(0.9);  // Adjust volume as needed
+        ghostSound.setRefDistance(10); // Distance at which sound starts to fade
+        ghostSound.setMaxDistance(50); // Maximum distance for the sound to be heard
+        ghostSound.play();  // Play sound when the werewolf moves
+       });
+       
             // Start walk animation
             if (gltf.animations && gltf.animations.length > 0) {
                 const walkAction = ghostData.mixer.clipAction(gltf.animations[5]);
