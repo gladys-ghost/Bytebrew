@@ -161,6 +161,85 @@ export default class Level1 {
         console.error("Error loading the GLTF model:", error);
       }
     );
+    camera.add(listener);
+    // Initialize audio loader
+const audioLoader = new THREE.AudioLoader();
+
+  
+let ghost;
+let mixer;
+let clock = new THREE.Clock();
+let ghostSound = new THREE.PositionalAudio(listener);
+
+gltfLoader.load(
+  "/prison_cell_door/ragno_monster.glb",
+  (gltf) => {
+    ghost = gltf.scene;
+    console.log(ghost);
+    ghost.scale.set(2, 1.5, 1);
+    ghost.position.set(4.2, 0, 18.95);
+    this.scene.add(ghost);
+
+    // Initialize animation mixer and play the animation
+    mixer = new THREE.AnimationMixer(ghost);
+    const clip = THREE.AnimationClip.findByName(gltf.animations, "Esqueleto|EsqueletoAction");
+    if (clip) {
+      const action = mixer.clipAction(clip);
+      action.play();
+    } else {
+      console.error("CINEMA_4D_MAIN animation not found in the GLTF model.");
+    }
+    ghost.add(ghostSound);
+
+     // Load werewolf sound
+audioLoader.load('./public/sounds/witch.mp3', (buffer) => {
+ ghostSound.setBuffer(buffer);
+ ghostSound.setLoop(true);
+ ghostSound.setVolume(0.5);  // Adjust volume as needed
+ ghostSound.setRefDistance(2); // Distance at which sound starts to fade
+ ghostSound.setMaxDistance(1); // Maximum distance for the sound to be heard
+ ghostSound.play();  // Play sound when the werewolf moves
+});
+
+    // Movement variables
+    const moveDistance = 3;
+    const speed = 0.02;
+    let direction = 1; // Start moving forward
+    let stepCount = 0;
+
+    // Create the movement loop
+    const moveGhost = () => {
+      requestAnimationFrame(moveGhost);
+
+      const delta = clock.getDelta();
+      if (mixer) mixer.update(delta); // Update the walking animation
+
+      // Move the ghost forward and backward
+      ghost.position.z += direction * speed;
+      stepCount += direction * speed;
+
+      // Reverse direction when the ghost has moved the set distance
+      if (Math.abs(stepCount) >= moveDistance) {
+        direction *= -1; // Change direction
+
+        // Rotate ghost when changing direction
+        if (direction === 1) {
+          // Face forward (original orientation)
+          ghost.rotation.y = 0;
+        } else {
+          // Face backward (rotate 180 degrees)
+          ghost.rotation.y = Math.PI;
+        }
+      }
+    };
+
+    moveGhost(); // Start the movement loop
+  },
+  undefined,
+  (error) => {
+    console.error("Error loading the GLTF model:", error);
+  }
+);
 
     // Ceiling
 
