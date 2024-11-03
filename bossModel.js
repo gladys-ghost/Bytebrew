@@ -10,9 +10,12 @@ class BossModel {
     this.hasReachedTarget = false;
     this.isAttacking = false;
     this.isWalking = false;
+    this.isDying = false;
+    this.health = 100;
     this.audioLoader = new THREE.AudioLoader();
     this.footstepSound = new THREE.Audio(new THREE.AudioListener());
     this.roarSound = new THREE.Audio(new THREE.AudioListener());
+    this.hitSound = new THREE.Audio(new THREE.AudioListener());
 
     // Load sounds
     this.loadSounds();
@@ -20,15 +23,20 @@ class BossModel {
   }
 
   loadSounds() {
-    this.audioLoader.load("./models/sounds/monster_footsteps.mp3", (buffer) => {
+    this.audioLoader.load("/models/sounds/monster_footsteps.mp3", (buffer) => {
       this.footstepSound.setBuffer(buffer);
       this.footstepSound.setLoop(true);
-      this.footstepSound.setVolume(0.5); // Adjust volume as needed
+      this.footstepSound.setVolume(0.5);
     });
 
-    this.audioLoader.load("./models/sounds/roar.mp3", (buffer) => {
+    this.audioLoader.load("/models/sounds/roar.mp3", (buffer) => {
       this.roarSound.setBuffer(buffer);
-      this.roarSound.setVolume(1); // Adjust volume as needed
+      this.roarSound.setVolume(1);
+    });
+
+    this.audioLoader.load("/models/sounds/monster_hit.mp3", (buffer) => {
+      this.hitSound.setBuffer(buffer);
+      this.hitSound.setVolume(0.7);
     });
   }
 
@@ -95,9 +103,92 @@ class BossModel {
     }
   }
 
+  handleBulletCollision(bullet, bulletIndex, bullets, scene) {
+    if (!this.model || this.isDying) return false;
+
+    const bossBox = new THREE.Box3().setFromObject(this.model);
+    const bulletBox = new THREE.Box3().setFromObject(bullet);
+
+    if (bossBox.intersectsBox(bulletBox)) {
+      // Remove bullet
+      scene.remove(bullet);
+      bullets.splice(bulletIndex, 1);
+
+      // Handle boss hit
+      this.handleHit();
+      return true;
+    }
+    return false;
+  }
+
+  handleHit() {
+    // Don't play hit sound if dying
+    if (!this.isDying && this.hitSound && !this.hitSound.isPlaying) {
+      this.hitSound.play();
+    }
+
+    // Rest of the code remains the same
+    this.health -= 10;
+
+    if (this.model) {
+      this.model.traverse((child) => {
+        if (child.isMesh) {
+          const originalMaterial = child.material.clone();
+          child.material.emissive.setHex(0xff0000);
+
+          setTimeout(() => {
+            child.material.emissive.setHex(0x000000);
+          }, 200);
+        }
+      });
+    }
+
+    if (this.health <= 0 && !this.isDying) {
+      this.die();
+    }
+  }
+
+  die() {
+    this.isDying = true;
+    this.isAttacking = false;
+    this.isWalking = false;
+
+    // Stop all current animations and sounds
+    this.mixer.stopAllAction();
+    this.footstepSound.stop();
+    this.roarSound.stop();
+
+    // Play death animation if available
+    if (this.animations["Death"]) {
+      const deathAction = this.mixer.clipAction(this.animations["Death"]);
+      deathAction.setLoop(THREE.LoopOnce);
+      deathAction.clampWhenFinished = true;
+      deathAction.play();
+
+      // Remove the boss after the death animation
+      deathAction.getMixer().addEventListener("finished", () => {
+        setTimeout(() => {
+          if (this.model && this.scene) {
+            this.scene.remove(this.model);
+          }
+        }, 1000);
+      });
+    } else {
+      // If no death animation, just remove the boss
+      if (this.model && this.scene) {
+        this.scene.remove(this.model);
+      }
+    }
+  }
+
   moveTowardsTarget(target) {
-    if (!this.model || !this.mixer) {
-      console.log("Model or mixer not initialized");
+    // Add early return if dying
+    if (this.isDying || !this.model || !this.mixer) {
+      // Make sure all sounds are stopped if we're dying
+      if (this.isDying) {
+        this.footstepSound.stop();
+        this.roarSound.stop();
+      }
       return;
     }
 
@@ -107,7 +198,6 @@ class BossModel {
     const distance = bossPosition.distanceTo(targetPosition);
     const reachThreshold = 4;
 
-    // If the boss is still moving towards the target
     if (distance > reachThreshold) {
       const direction = new THREE.Vector3()
         .subVectors(targetPosition, bossPosition)
@@ -116,58 +206,54 @@ class BossModel {
       const speed = 0.05;
       const movement = direction.multiplyScalar(speed);
 
-      // Move the boss towards the target
       this.model.position.add(movement);
       this.model.lookAt(targetPosition);
 
-      // Play the walk animation if it's not already playing
-      if (this.animations["Walk"] && !this.isAttacking) {
+      // Only play walk animation and sound if not dying
+      if (this.animations["Walk"] && !this.isAttacking && !this.isDying) {
         const walkAction = this.mixer.clipAction(this.animations["Walk"]);
         if (!walkAction.isRunning()) {
           this.playAnimation("Walk");
-          if (!this.isWalking) {
-            this.footstepSound.play(); // Start playing footstep sound
-            this.isWalking = true; // Set walking state to true
+          if (!this.isWalking && !this.isDying) {
+            // Extra dying check
+            this.footstepSound.play();
+            this.isWalking = true;
           }
         }
       }
-    } else if (!this.isAttacking) {
-      // Boss has reached the target and is not already attacking
+    } else if (!this.isAttacking && !this.isDying) {
+      // Add dying check
       this.hasReachedTarget = true;
-      this.isAttacking = true; // Set attacking state to true
+      this.isAttacking = true;
 
-      // Stop the footstep sound
       this.footstepSound.stop();
-      this.isWalking = false; // Reset walking state
+      this.isWalking = false;
 
-      // Randomly choose between the available attack animations
       const attackAnimations = ["HookPunch", "Stab", "Attack"];
       const randomAttack =
         attackAnimations[Math.floor(Math.random() * attackAnimations.length)];
 
       const attackAction = this.mixer.clipAction(this.animations[randomAttack]);
 
-      // Play the random attack animation if it's not running
       if (!attackAction.isRunning()) {
         this.playAnimation(randomAttack);
-        attackAction.setLoop(THREE.LoopOnce); // Play only once
-        attackAction.clampWhenFinished = true; // Stop at the last frame
+        attackAction.setLoop(THREE.LoopOnce);
+        attackAction.clampWhenFinished = true;
         attackAction.play();
 
-        console.log(`Playing random attack animation: ${randomAttack}`);
+        // Only play roar if not dying
+        if (!this.isDying) {
+          this.roarSound.play();
+        }
 
-        // Play the roar sound
-        this.roarSound.play();
-
-        // Add an event listener to reset the `isAttacking` flag after the attack finishes
         attackAction.getMixer().addEventListener("finished", () => {
-          this.isAttacking = false; // Reset attacking state
-          this.footstepSound.stop(); // Stop footstep sound after attacking
+          this.isAttacking = false;
+          this.footstepSound.stop();
         });
       }
     } else if (this.isWalking && this.isAttacking) {
-      this.footstepSound.stop(); // Stop footstep sound if attacking
-      this.isWalking = false; // Reset walking state
+      this.footstepSound.stop();
+      this.isWalking = false;
     }
   }
 }

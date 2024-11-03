@@ -8,6 +8,7 @@ export default class Level1 {
     this.scene = scene;
     this.player = player;
     this.offset = new Wall(0, 0, 0, 0, 0).wallWidth / 2;
+    this.level = 3;
 
     // Array to store bounding boxes for all walls
     this.wallBoundingBoxes = [];
