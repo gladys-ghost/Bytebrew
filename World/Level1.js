@@ -227,6 +227,33 @@ export default class Level1 {
             this.scene.add(ambientLight);
             this.scene.add(fireLight);
             this.scene.add(fbx);
+            
+            // Add collision box for the fireplace
+            const fireplaceBox = new THREE.Box3().setFromObject(fbx);
+            const boxSize = new THREE.Vector3();
+            fireplaceBox.getSize(boxSize);
+            
+            // Create a slightly smaller collision box
+            const collisionGeometry = new THREE.BoxGeometry(
+                boxSize.x * 0.8,  // Make collision box slightly smaller than the model
+                boxSize.y,
+                boxSize.z * 0.8
+            );
+            const collisionMaterial = new THREE.MeshBasicMaterial({
+                visible: false  // Make it invisible
+            });
+            const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
+            
+            // Position the collision box
+            collisionMesh.position.copy(fbx.position);
+            collisionMesh.rotation.copy(fbx.rotation);
+            
+            // Add to scene and store in bounding boxes array
+            this.scene.add(collisionMesh);
+            this.addBoundingBox(collisionMesh);
+            
+            // Store reference to remove later
+            this.fireplaceCollider = collisionMesh;
         },
         (xhr) => {
             console.log((xhr.loaded / xhr.total * 100) + '% loaded');
@@ -254,6 +281,10 @@ export default class Level1 {
     this.scene.remove(this.anotherRoomGroup);
     this.scene.remove(this.enemyRoomGroup);
     this.scene.remove(this.bedroomGroup);
+    
+    if (this.fireplaceCollider) {
+        this.scene.remove(this.fireplaceCollider);
+    }
     
     // Remove all lights and models
     this.scene.traverse((object) => {
