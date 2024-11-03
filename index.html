@@ -4,8 +4,17 @@
   <meta charset="UTF-8">
   <title>First Person Shooter Game</title>
   <style>
-    body { margin: 0; overflow: hidden; }
+    body { 
+      margin: 0; 
+      overflow: hidden; 
+      background: url('./spooky_background.jpg') no-repeat center center fixed; 
+      background-size: cover;
+      color: #f8f8f8;
+      font-family: 'Creepster', cursive;
+    }
+
     canvas { display: block; }
+
     .menu-overlay {
       position: absolute;
       top: 0;
@@ -13,59 +22,82 @@
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.7);
-      color: white;
+      color: #e0e0e0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 20px;
       z-index: 10;
+      text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.7);
     }
-    .menu-overlay h1 { font-size: 36px; margin-bottom: 20px; }
+    /* Title style */
+    .menu-overlay h1 { font-size: 48px; 
+      margin-bottom: 20px; 
+      color: #ff6666;
+      text-shadow: 2px 2px 10px rgba(255, 0, 0, 0.8);
+    }
+    /* Button styles */
     .menu-overlay button {
       margin: 10px;
-      padding: 10px 20px;
-      font-size: 18px;
+      padding: 12px 24px;
+      font-size: 20px;
       cursor: pointer;
-      width: 200px;
-      background-color: rgba(255, 255, 255, 0.2);
-      color: white;
-      border: 2px solid white;
-      transition: background-color 0.3s;
+      width: 220px;
+      background-color: rgba(255, 0, 0, 0.6);
+      color: #fff;
+      border: 2px solid #fff;
+      border-radius: 10px;
+      transition: background-color 0.3s, transform 0.3s;
     }
+    /* Hover effect for buttons */
     .menu-overlay button:hover {
-      background-color: rgba(255, 255, 255, 0.4);
+      background-color: rgba(255, 0, 0, 0.8);
+      transform: scale(1.05);
     }
+    /* Grid layout for options */
     .options-grid {
       display: grid;
       grid-template-columns: auto auto;
       gap: 10px;
       margin-bottom: 20px;
+      color: #ffdddd;
     }
     .options-grid label { text-align: right; }
-    .options-grid select, .options-grid input { width: 150px; }
-    #creditsScreen { text-align: center; }
-    #creditsScreen ul { list-style-type: none; padding: 0; }
+    .options-grid select, .options-grid input { 
+      width: 150px; 
+      background-color: rgba(255, 255, 255, 0.2); 
+      border: 1px solid #fff; 
+      color: #fff; 
+    }
+     /* Credits Screen */
+    #creditsScreen ul { 
+      list-style-type: none; 
+      padding: 0; 
+    }
+    #creditsScreen ul li{ 
+      margin: 30px 0; 
+    }
+
   </style>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="startMenu" class="menu-overlay">
-    <h1>First Person Shooter</h1>
+    <h1>Amazing Game ~ Haunted Edition</h1>
     <button id="startButton">Start</button>
     <button id="optionsButton">Options</button>
     <button id="creditsButton">Credits</button>
     <button id="controls">Controls</button>
+    <button id="instructions">How to play</button>
   </div>
-
-  <script>
-    document.getElementById('controls').addEventListener('click', ()=>{
-      window.location.href = "./controls.html"
-    })
-  </script>
-
+  
+  <!-- Option Screen -->
   <div id="optionsScreen" class="menu-overlay" style="display: none;">
     <h1>Options</h1>
     <div class="options-grid">
+
+      <!-- Difficulty Selection -->
       <label for="difficulty">Difficulty:</label>
       <select id="difficulty">
         <option value="easy">Easy</option>
@@ -73,12 +105,19 @@
         <option value="hard">Hard</option>
       </select>
 
+      <!-- Sound Toggle -->
+      <label for="soundToggle">Music:</label>
+      <input type="checkbox" id="soundToggle" checked>
+
+      <!-- Mouse Sensitivity Control -->
       <label for="mouseSensitivity">Mouse Sensitivity:</label>
       <input type="range" id="mouseSensitivity" min="1" max="10" value="5">
 
+      <!-- Sound Volume Control -->
       <label for="soundVolume">Sound Volume:</label>
       <input type="range" id="soundVolume" min="0" max="100" value="75">
 
+      <!-- Graphics Quality Selection -->
       <label for="graphicsQuality">Graphics Quality:</label>
       <select id="graphicsQuality">
         <option value="low">Low</option>
@@ -86,38 +125,116 @@
         <option value="high">High</option>
       </select>
 
+      <!-- Field of View Control -->
       <label for="fov">Field of View:</label>
       <input type="range" id="fov" min="60" max="120" value="90">
     </div>
+
     <button id="saveOptionsButton">Save & Close</button>
   </div>
 
+  <!-- Credits Screen -->
   <div id="creditsScreen" class="menu-overlay" style="display: none;">
     <h1>Credits</h1>
+    <h2>THE BYTEBREW TEAM</h2>
     <ul>
-      <li><strong>Game Design:</strong> Trevor</li>
-      <li><strong>Programming:</strong> Knowledge</li>
-      <li><strong>3D Modeling:</strong> Tebza</li>
-      <li><strong>Textures:</strong> Sipho</li>
-      <li><strong>Sound Effects:</strong> Amogelang</li>
-      <li><strong>Music:</strong> Muano</li>
-      <li><strong>Special Thanks:</strong> ByteBrew</li>
+      <li>Knowledge</li>
+      <li>Tebza</li>
+      <li>Sipho</li>
+      <li>Amogelang</li>
+      <li>Muano</li>
     </ul>
-    <p>Made By ByteBrew using Three.js and lots of coffee</p>
+    <p>Made using Three.js and lots of coffee</p>
     <button id="closeCreditsButton">Close</button>
   </div>
+
+  <!-- Audio Element for Sound Effects -->
   <div>
     <audio id="myAudio" autoplay="autoplay">
-        <source src="./public/shot.mp3" type="audio/mpeg"> Your browser does not support the audio element.
+      <source src="./public/theme_audio.mp3" type="audio/mpeg"> Your browser does not support the audio element.
     </audio>
-</div>
+  </div>
 
-<div id="door-popup" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px;">
-  Press E to open the door
-</div>
-<div id="loading-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); color: white; text-align: center; padding-top: 20%;">
-  <h1>Loading Level 2...</h1>
-</div>
+  <!-- Popup for Door Interaction -->
+  <div id="door-popup" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px;">
+    Press E to open the door
+  </div>
+
+  <!-- Loading Screen Overlay -->
+  <div id="loading-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); color: white; text-align: center; padding-top: 20%;">
+    <h1>Loading Level 2...</h1>
+  </div>
+
+  <script>
+    // Audio playback
+    const myAudio = document.getElementById('myAudio');
+    myAudio.loop = true; 
+
+    // Load saved options from local storage
+    window.onload = () => {
+        const soundEnabled = localStorage.getItem('soundEnabled') === 'true';
+        document.getElementById('soundToggle').checked = soundEnabled;
+        myAudio.volume = (localStorage.getItem('soundVolume') || 75) / 100; // Default volume
+        myAudio.muted = !soundEnabled; // Mute if sound is not enabled
+        if (soundEnabled) {
+            myAudio.play();
+        }
+    };
+
+    // Update volume when changed
+    document.getElementById('soundVolume').addEventListener('input', (event) => {
+        myAudio.volume = event.target.value / 100; // Convert to 0-1 range
+    });
+
+    // Toggle sound on/off
+    document.getElementById('soundToggle').addEventListener('change', (event) => {
+        if (event.target.checked) {
+            myAudio.play();
+            myAudio.muted = false; // Unmute
+        } else {
+            myAudio.pause();
+            myAudio.muted = true; // Mute
+        }
+    });
+
+    // Save options when the save button is clicked
+    document.getElementById('saveOptionsButton').addEventListener('click', () => {
+        const soundEnabled = document.getElementById('soundToggle').checked;
+        localStorage.setItem('soundEnabled', soundEnabled);
+        localStorage.setItem('soundVolume', myAudio.volume * 100); // Save as percentage
+        document.getElementById('optionsScreen').style.display = 'none';
+    });
+
+    // Stop audio when navigating away
+    window.addEventListener('beforeunload', () => {
+        myAudio.pause();
+        myAudio.currentTime = 0; 
+    });
+
+    // Navigate to Controls Screen
+    document.getElementById('controls').addEventListener('click', () => {
+      window.location.href = "./controls.html";
+    });
+
+    // Go to instructions
+    document.getElementById('instructions').addEventListener('click', () => {
+      window.location.href = "./instruction.html";
+    });
+
+    // Show and Hide Credits Screen
+    document.getElementById('creditsButton').addEventListener('click', () => {
+      document.getElementById('creditsScreen').style.display = 'flex';
+    });
+    document.getElementById('closeCreditsButton').addEventListener('click', () => {
+      document.getElementById('creditsScreen').style.display = 'none';
+    });
+
+    // Show and Hide Options Screen
+    document.getElementById('optionsButton').addEventListener('click', () => {
+      document.getElementById('optionsScreen').style.display = 'flex';
+    });
+    
+  </script>
 
   <script type="module" src="main.js"></script>
 </body>
