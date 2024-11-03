@@ -754,7 +754,7 @@ function checkGhostCollisions() {
         let z = ghost.model.position.z*ghost.model.position.z  - model.position.z*model.position.z
         if (x*x+z*z<=10) {
        //   healthBar.damage(5.1);
-          inventory.takeDamage(0.1);
+          inventory.takeDamage(0.5);
           healthBar.setHealth(inventory.getHealth())
 
           if(healthBar.getHealth() == 0){

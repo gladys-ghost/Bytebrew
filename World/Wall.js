@@ -11,24 +11,24 @@ export default class Wall {
     this.loader = new THREE.TextureLoader();
 
     // Load all textures with enhanced settings
-    this.texture = this.loader.load("/wall-textures/concrete_wall_003_diff_1k.jpg", (texture) => {
+    this.texture = this.loader.load("./wall-textures/concrete_wall_003_diff_1k.jpg", (texture) => {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(3, 1);
       texture.encoding = THREE.sRGBEncoding;
       texture.anisotropy = 16;
     });
 
-    this.roughnessTexture = this.loader.load("/wall-textures/concrete_wall_003_rough_1k.jpg", (texture) => {
+    this.roughnessTexture = this.loader.load("./wall-textures/concrete_wall_003_rough_1k.jpg", (texture) => {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(5, 5);
     });
 
-    this.normalTexture = this.loader.load("/wall-textures/concrete_wall_003_nor_gl_1k.exr", (texture) => {
+    this.normalTexture = this.loader.load("./wall-textures/concrete_wall_003_nor_gl_1k.exr", (texture) => {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(5, 5);
     });
 
-    this.aoTexture = this.loader.load("/wall-textures/concrete_wall_003_ao_1k.jpg", (texture) => {
+    this.aoTexture = this.loader.load("./wall-textures/concrete_wall_003_ao_1k.jpg", (texture) => {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(5, 5);
     });

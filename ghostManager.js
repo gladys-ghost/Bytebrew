@@ -16,8 +16,8 @@ class GhostManager {
             minZ: -100,
             maxZ: 100
         };
-        this.hitSound = new Audio('/shot.mp3');
-        this.deathSound = new Audio('/die.mp3');
+        this.hitSound = new Audio('./public/shot.mp3');
+        this.deathSound = new Audio('./public/die.mp3');
     }
 
 

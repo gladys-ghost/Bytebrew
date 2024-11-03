@@ -20,13 +20,13 @@ class BossModel {
   }
 
   loadSounds() {
-    this.audioLoader.load("/models/sounds/monster_footsteps.mp3", (buffer) => {
+    this.audioLoader.load("./models/sounds/monster_footsteps.mp3", (buffer) => {
       this.footstepSound.setBuffer(buffer);
       this.footstepSound.setLoop(true);
       this.footstepSound.setVolume(0.5); // Adjust volume as needed
     });
 
-    this.audioLoader.load("/models/sounds/roar.mp3", (buffer) => {
+    this.audioLoader.load("./models/sounds/roar.mp3", (buffer) => {
       this.roarSound.setBuffer(buffer);
       this.roarSound.setVolume(1); // Adjust volume as needed
     });
