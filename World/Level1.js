@@ -3,7 +3,6 @@ import Wall from "./Wall.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 
-
 export default class Level1 {
   constructor(scene, player) {
     this.scene = scene;
@@ -21,10 +20,8 @@ export default class Level1 {
 
     let doorType = this.monstersDead ? "unlocked.glb" : "scene.gltf";
 
-
     // this.player.position.set(-23.83, 1.6, -24.9);
-    console.log("Player:::: ",this.player);
-
+    console.log("Player:::: ", this.player);
 
     gltfLoader.load(
       `/science_lab_door_-_apocalyptic/${doorType}`,
@@ -108,7 +105,6 @@ export default class Level1 {
         // Add walls for the first room
         this.enemyRoomWall1 = new Wall(-5, 0, 20, 0, 10);
         this.enemyRoomGroup.add(this.enemyRoomWall1.mesh);
-        
 
         this.enemyRoomWall2 = new Wall(
           10 - this.offset + slightOffset,
@@ -118,11 +114,9 @@ export default class Level1 {
           13
         );
         this.enemyRoomGroup.add(this.enemyRoomWall2.mesh);
-        
 
         this.enemyRoomWall3 = new Wall(10, 0, 20, 0, 10);
         this.enemyRoomGroup.add(this.enemyRoomWall3.mesh);
-        
 
         this.enemyRoomWall4 = new Wall(
           -2.5 - this.offset + slightOffset,
@@ -132,7 +126,6 @@ export default class Level1 {
           5
         );
         this.enemyRoomGroup.add(this.enemyRoomWall4.mesh);
-        
 
         this.enemyRoomWall5 = new Wall(
           22.5 - this.offset + slightOffset,
@@ -142,14 +135,14 @@ export default class Level1 {
           5
         );
         this.enemyRoomGroup.add(this.enemyRoomWall5.mesh);
-        
+
         // Add the first room group to the scene
         this.scene.add(this.enemyRoomGroup);
         this.addBoundingBox(this.enemyRoomGroup);
 
         // Clone walls and create a new group for the second room
         this.anotherRoomGroup = this.enemyRoomGroup.clone();
-        this.anotherRoomGroup.rotation.set(0, Math.PI/2, 0);
+        this.anotherRoomGroup.rotation.set(0, Math.PI / 2, 0);
         this.addBoundingBox(this.anotherRoomGroup);
         // Add the cloned room to the scene
         this.scene.add(this.anotherRoomGroup);
@@ -179,89 +172,98 @@ export default class Level1 {
 
     const fbxLoader = new FBXLoader();
     fbxLoader.load(
-        '/models/fireplace/source/maya2sketchfab.fbx',
-        (fbx) => {
-            fbx.scale.set(0.4, 0.4, 0.4);
-            fbx.position.set(-22.5, 0, -10);
-            fbx.rotation.y = Math.PI / 2;
-            
-            // Basic material handling
-            fbx.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                    
-                    // Create basic material for the fireplace structure
-                    const material = new THREE.MeshStandardMaterial({
-                        color: 0x808080,
-                        roughness: 0.7,
-                        metalness: 0.3
-                    });
-                    
-                    // If it's the fire part, make it emissive
-                    if (child.name.toLowerCase().includes('fire') || child.name.toLowerCase().includes('flame')) {
-                        material.emissive = new THREE.Color(0xff5500);
-                        material.emissiveIntensity = 2;
-                    }
-                    
-                    child.material = material;
-                }
+      "/models/fireplace/source/maya2sketchfab.fbx",
+      (fbx) => {
+        fbx.scale.set(0.4, 0.4, 0.4);
+        fbx.position.set(-22.5, 0, -10);
+        fbx.rotation.y = Math.PI / 2;
+
+        // Basic material handling
+        fbx.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+
+            // Create basic material for the fireplace structure
+            const material = new THREE.MeshStandardMaterial({
+              color: 0x808080,
+              roughness: 0.7,
+              metalness: 0.3,
             });
-            
-            // Simple lighting setup
-            // Main bright light for the fire
-            const fireLight = new THREE.PointLight(0xff7700, 8, 20);
-            fireLight.position.copy(fbx.position);
-            fireLight.position.y += 2;
-            
-            // Ambient light to make the fireplace visible
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-            
-            // Animate the fire light
-            const animate = () => {
-                fireLight.intensity = 6 + Math.random() * 4; // Flicker between 6 and 10 intensity
-                requestAnimationFrame(animate);
-            };
-            animate();
-            
-            this.scene.add(ambientLight);
-            this.scene.add(fireLight);
-            this.scene.add(fbx);
-            
-            // Add collision box for the fireplace
-            const fireplaceBox = new THREE.Box3().setFromObject(fbx);
-            const boxSize = new THREE.Vector3();
-            fireplaceBox.getSize(boxSize);
-            
-            // Create a slightly smaller collision box
-            const collisionGeometry = new THREE.BoxGeometry(
-                boxSize.x * 0.8,  // Make collision box slightly smaller than the model
-                boxSize.y,
-                boxSize.z * 0.8
-            );
-            const collisionMaterial = new THREE.MeshBasicMaterial({
-                visible: false  // Make it invisible
-            });
-            const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
-            
-            // Position the collision box
-            collisionMesh.position.copy(fbx.position);
-            collisionMesh.rotation.copy(fbx.rotation);
-            
-            // Add to scene and store in bounding boxes array
-            this.scene.add(collisionMesh);
-            this.addBoundingBox(collisionMesh);
-            
-            // Store reference to remove later
-            this.fireplaceCollider = collisionMesh;
-        },
-        (xhr) => {
-            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-        },
-        (error) => {
-            console.error('Error loading fireplace:', error);
-        }
+
+            // If it's the fire part, make it emissive
+            if (
+              child.name.toLowerCase().includes("fire") ||
+              child.name.toLowerCase().includes("flame")
+            ) {
+              material.emissive = new THREE.Color(0xff5500);
+              material.emissiveIntensity = 2;
+            }
+
+            child.material = material;
+          }
+        });
+
+        // Simple lighting setup
+        // Main bright light for the fire
+        const fireLight = new THREE.PointLight(0xff7700, 8, 20);
+        fireLight.position.copy(fbx.position);
+        fireLight.position.y += 2;
+
+        // Ambient light to make the fireplace visible
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+
+        // Animate the fire light
+        const animate = () => {
+          fireLight.intensity = 6 + Math.random() * 4; // Flicker between 6 and 10 intensity
+          requestAnimationFrame(animate);
+        };
+        animate();
+
+        this.scene.add(ambientLight);
+        this.scene.add(fireLight);
+        this.scene.add(fbx);
+
+        // Add collision box for the fireplace
+        const fireplaceBox = new THREE.Box3().setFromObject(fbx);
+        const boxSize = new THREE.Vector3();
+        fireplaceBox.getSize(boxSize);
+
+        // Create a slightly smaller collision box
+        const collisionGeometry = new THREE.BoxGeometry(
+          boxSize.x * 0.8, // Make collision box slightly smaller than the model
+          boxSize.y,
+          boxSize.z * 0.8
+        );
+        const collisionMaterial = new THREE.MeshBasicMaterial({
+          visible: false, // Make it invisible
+        });
+        const collisionMesh = new THREE.Mesh(
+          collisionGeometry,
+          collisionMaterial
+        );
+
+        // Position the collision box
+        collisionMesh.position.copy(fbx.position);
+        collisionMesh.rotation.copy(fbx.rotation);
+
+        // Add to scene and store in bounding boxes array
+        this.scene.add(collisionMesh);
+        this.addBoundingBox(collisionMesh);
+
+        // Store reference to remove later
+        this.fireplaceCollider = collisionMesh;
+      },
+      (xhr) => {
+        console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+      },
+      (error) => {
+        console.error("Error loading fireplace:", error);
+      }
     );
+
+    // Add crates to the scene
+    this.loadCrates();
   }
 
   // Helper method to create and store bounding boxes for each wall
@@ -272,7 +274,7 @@ export default class Level1 {
   getWallBoundingBoxes() {
     return this.wallBoundingBoxes;
   }
-  setMonstersDead(){
+  setMonstersDead() {
     this.monstersDead = true;
   }
 
@@ -281,16 +283,96 @@ export default class Level1 {
     this.scene.remove(this.anotherRoomGroup);
     this.scene.remove(this.enemyRoomGroup);
     this.scene.remove(this.bedroomGroup);
-    
+
     if (this.fireplaceCollider) {
-        this.scene.remove(this.fireplaceCollider);
+      this.scene.remove(this.fireplaceCollider);
     }
-    
+
     // Remove all lights and models
     this.scene.traverse((object) => {
-        if (object.isPointLight || object.type === 'Group') {
-            this.scene.remove(object);
-        }
+      if (object.isPointLight || object.type === "Group") {
+        this.scene.remove(object);
+      }
+    });
+
+    // Remove all crates and their collision boxes
+    this.scene.traverse((object) => {
+      if (object.isMesh || object.type === "Group") {
+        this.scene.remove(object);
+      }
     });
   }
+
+  loadCrates() {
+    const fbxLoader = new FBXLoader();
+    const textureLoader = new THREE.TextureLoader();
+
+    // Load the crate model
+    fbxLoader.load(
+        '/models/lowpoly-crates/source/Sketchfab.fbx',
+        (fbx) => {
+            // Create multiple crates with different positions and rotations
+            const cratePositions = [
+                { pos: [-15, 0, -15], rot: [0, Math.PI / 4, 0], scale: 0.06 },
+                { pos: [-14, 0, -13], rot: [0, -Math.PI / 6, 0], scale: 0.03 },
+                { pos: [12, 0, 18], rot: [0, Math.PI / 3, 0], scale: 0.06 },
+                { pos: [14, 0, 17], rot: [0, -Math.PI / 5, 0], scale: 0.036 },
+                { pos: [-18, 0, 15], rot: [0, Math.PI / 2, 0], scale: 0.06 }
+            ];
+
+            // Load textures
+            const baseColorTexture = textureLoader.load('/public/9mm_ammo_box/textures/material_baseColor.png');
+            const normalTexture = textureLoader.load('/public/9mm_ammo_box/textures/material_normal.png');
+            const metallicRoughnessTexture = textureLoader.load('/public/9mm_ammo_box/textures/material_metallicRoughness.png');
+
+            // Configure texture settings
+            [baseColorTexture, normalTexture, metallicRoughnessTexture].forEach(texture => {
+                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(1, 1);
+            });
+
+            cratePositions.forEach(({ pos, rot, scale }) => {
+                const crateCopy = fbx.clone();
+
+                // Apply position, rotation, and scale
+                crateCopy.position.set(...pos);
+                crateCopy.rotation.set(...rot);
+                crateCopy.scale.set(scale, scale, scale);
+
+                // Apply textures and configure materials
+                crateCopy.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+
+                        // Create PBR material
+                        child.material = new THREE.MeshStandardMaterial({
+                            map: baseColorTexture,
+                            normalMap: normalTexture,
+                            metalnessMap: metallicRoughnessTexture,
+                            roughnessMap: metallicRoughnessTexture,
+                            metalness: 0.5,
+                            roughness: 0.5,
+                            envMapIntensity: 1.0,
+                            normalScale: new THREE.Vector2(1, 1)
+                        });
+                    }
+                });
+
+                // Add collision box for the crate
+                const crateBox = new THREE.Box3().setFromObject(crateCopy);
+                this.addBoundingBox(crateCopy);
+
+                // Add to scene
+                this.scene.add(crateCopy);
+            });
+        },
+        (xhr) => {
+            console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+        },
+        (error) => {
+            console.error("Error loading crates:", error);
+        }
+    );
+}
 }
