@@ -18,9 +18,9 @@ async function loadPlayerModel() {
   const groundGeometry = new THREE.PlaneGeometry(50, 50);
   const loaderGround = new THREE.TextureLoader();
 
-  const baseColorTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_basecolor.png');
-  const normalTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_normal.png');
-  const roughnessTexture = loaderGround.load('./public/old-plank-flooring4-bl/old-plank-flooring4_roughness.png');
+  const baseColorTexture = loaderGround.load('../public/old-plank-flooring4-bl/old-plank-flooring4_basecolor.png');
+  const normalTexture = loaderGround.load('../public/old-plank-flooring4-bl/old-plank-flooring4_normal.png');
+  const roughnessTexture = loaderGround.load('../public/old-plank-flooring4-bl/old-plank-flooring4_roughness.png');
 
   [baseColorTexture, normalTexture, roughnessTexture].forEach((texture) => {
     texture.wrapS = THREE.RepeatWrapping;
